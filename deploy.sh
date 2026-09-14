@@ -103,10 +103,17 @@ docker compose up -d --build
 
 # Wait for database readiness
 echo -e "${CYAN}⏳ Step 5: Initializing PostgreSQL Database & Seeding Superadmin...${NC}"
-sleep 6
+for i in {1..30}; do
+    if docker compose exec -T postgres pg_isready -U ${POSTGRES_USER:-azion} -d ${POSTGRES_DB:-azionmail} &>/dev/null; then
+        echo -e "${GREEN}✅ Database is ready.${NC}"
+        break
+    fi
+    echo "Waiting for PostgreSQL to start ($i/30)..."
+    sleep 2
+done
 
 docker compose exec -T web npx prisma db push --accept-data-loss
-docker compose exec -T web npx tsx prisma/seed.ts || true
+docker compose exec -T web node prisma/seed.js || true
 
 # Extract credentials for final summary
 CURRENT_HOST=$(grep "^MAIL_HOST=" .env | cut -d '=' -f2)

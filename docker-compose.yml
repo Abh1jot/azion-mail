@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # -------------------------------------------------------------------------
   # 1. Reverse Proxy & Automatic SSL Engine (Caddy)
@@ -199,7 +197,7 @@ services:
   # 8. SnappyMail Ultra-Light Webmail Client (< 40MB RAM)
   # -------------------------------------------------------------------------
   webmail:
-    image: tinyrange/snappymail:latest
+    image: djmaze/snappymail:latest
     container_name: azion-webmail
     restart: unless-stopped
     volumes:
