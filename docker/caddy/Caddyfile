@@ -4,8 +4,14 @@
 }
 
 {$CADDY_SITE_ADDR::80} {
-    # SnappyMail Webmail routing
+    # SnappyMail Webmail routing & assets
+    redir /webmail /webmail/ 308
+
     handle_path /webmail* {
+        reverse_proxy webmail:8888
+    }
+
+    handle /snappymail* {
         reverse_proxy webmail:8888
     }
 

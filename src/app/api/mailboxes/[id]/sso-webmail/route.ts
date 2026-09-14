@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const webmailBase = process.env.WEBMAIL_URL || 'http://localhost:8080';
+    const webmailBase = process.env.WEBMAIL_URL || '/webmail';
     // Construct pre-filled webmail login destination
     const webmailUrl = `${webmailBase.replace(/\/$/, '')}/?_user=${encodeURIComponent(mailbox.address)}`;
 

@@ -35,7 +35,7 @@ export default function Navbar({ user }: NavbarProps) {
 
         {/* Webmail Direct Portal Link */}
         <a
-          href={process.env.NEXT_PUBLIC_WEBMAIL_URL || 'http://localhost:8080'}
+          href={process.env.NEXT_PUBLIC_WEBMAIL_URL || '/webmail'}
           target="_blank"
           rel="noopener noreferrer"
           className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
