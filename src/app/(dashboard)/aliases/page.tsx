@@ -6,6 +6,7 @@ import { Repeat, Plus, RotateCw, Trash2, ArrowRight, AlertCircle } from 'lucide-
 export default function AliasesPage() {
   const [aliases, setAliases] = useState<any[]>([]);
   const [domains, setDomains] = useState<any[]>([]);
+  const [mailboxes, setMailboxes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal State
@@ -19,15 +20,18 @@ export default function AliasesPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [aliRes, domRes] = await Promise.all([
+      const [aliRes, domRes, mbRes] = await Promise.all([
         fetch('/api/aliases'),
         fetch('/api/domains'),
+        fetch('/api/mailboxes'),
       ]);
       const aliData = await aliRes.json();
       const domData = await domRes.json();
+      const mbData = await mbRes.json();
 
       setAliases(aliData.aliases || []);
       setDomains(domData.domains || []);
+      setMailboxes(mbData.mailboxes || []);
       if (domData.domains && domData.domains.length > 0 && !selectedDomainId) {
         setSelectedDomainId(domData.domains[0].id);
       }
@@ -204,15 +208,50 @@ export default function AliasesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Destination Mailbox</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. john@yourcompany.com"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-dark-surface border border-dark-border text-sm text-white focus:outline-none focus:border-azion-500"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-300">Destination Mailbox</label>
+                  <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                    Optional
+                  </span>
+                </div>
+                {mailboxes.filter((m) => m.domainId === selectedDomainId).length > 0 ? (
+                  <div className="space-y-2">
+                    <select
+                      value={destination}
+                      onChange={(e) => setDestination(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-dark-surface border border-dark-border text-sm text-white focus:outline-none focus:border-azion-500 cursor-pointer"
+                    >
+                      <option value="">
+                        Default (Primary: {mailboxes.filter((m) => m.domainId === selectedDomainId)[0].address})
+                      </option>
+                      {mailboxes
+                        .filter((m) => m.domainId === selectedDomainId)
+                        .map((mb) => (
+                          <option key={mb.id} value={mb.address}>
+                            {mb.address} {mb.name ? `(${mb.name})` : ''}
+                          </option>
+                        ))}
+                    </select>
+                    <input
+                      type="email"
+                      placeholder="Or enter custom destination (e.g. personal@gmail.com)"
+                      value={destination.includes('@') && !mailboxes.some((m) => m.address === destination) ? destination : ''}
+                      onChange={(e) => setDestination(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-dark-surface border border-dark-border text-xs text-white placeholder:text-dark-muted focus:outline-none focus:border-azion-500"
+                    />
+                  </div>
+                ) : (
+                  <input
+                    type="email"
+                    placeholder="Optional — Leave blank to route to primary mailbox"
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-dark-surface border border-dark-border text-sm text-white focus:outline-none focus:border-azion-500"
+                  />
+                )}
+                <p className="text-[11px] text-dark-muted mt-1.5">
+                  Leave blank to automatically deliver to your primary mailbox on this domain.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">

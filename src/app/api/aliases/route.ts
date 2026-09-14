@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
 
     const { domainId, sourcePrefix, destination } = await req.json();
 
-    if (!domainId || !sourcePrefix || !destination) {
-      return NextResponse.json({ error: 'Domain, source prefix, and destination are required' }, { status: 400 });
+    if (!domainId || !sourcePrefix) {
+      return NextResponse.json({ error: 'Domain and source alias prefix are required' }, { status: 400 });
     }
 
     const domain = await prisma.domain.findUnique({ where: { id: domainId } });
@@ -53,8 +53,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    let cleanDestination = destination?.toLowerCase().trim();
+
+    // If destination is not specified, auto-resolve to primary mailbox for this domain or user email
+    if (!cleanDestination) {
+      const primaryMailbox = await prisma.mailbox.findFirst({
+        where: { domainId, isActive: true },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (primaryMailbox) {
+        cleanDestination = primaryMailbox.address;
+      } else {
+        cleanDestination = user.email;
+      }
+    }
+
     const cleanSource = `${sourcePrefix.toLowerCase().trim().replace(/@.*$/, '')}@${domain.domain}`;
-    const cleanDestination = destination.toLowerCase().trim();
 
     const existing = await prisma.alias.findUnique({ where: { source: cleanSource } });
     if (existing) {
