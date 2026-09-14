@@ -200,7 +200,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 75M
+          memory: 150M
 
   # -------------------------------------------------------------------------
   # 8. SnappyMail Ultra-Light Webmail Client (< 40MB RAM)
