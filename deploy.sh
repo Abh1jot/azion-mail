@@ -211,8 +211,13 @@ if [ "$HOST_WEB_SERVER" = true ]; then
     echo -e " • Azion Mail internal proxy running on: http://127.0.0.1:8088"
     echo -e " • Host Nginx configuration: /etc/nginx/sites-available/azion-mail.conf"
     echo -e " • To enable free SSL (HTTPS) via your host's Certbot, run:"
-    echo -e "   ${YELLOW}sudo certbot --nginx -d ${CURRENT_HOST}${NC}"
+    echo -e "   ${YELLOW}sudo certbot --nginx -d ${CURRENT_HOST} && bash sync-ssl.sh${NC}"
     echo -e "------------------------------------------------------------------------------"
+fi
+
+# Auto-sync SSL certificates into Postfix/Dovecot if Let's Encrypt already exists on host
+if [ -f "sync-ssl.sh" ]; then
+    bash sync-ssl.sh 2>/dev/null || true
 fi
 
 echo -e "🚀 NEXT STEPS:"

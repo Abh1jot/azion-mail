@@ -139,6 +139,11 @@ if [ "$COMPOSE_CHANGED" = true ]; then
     docker compose up -d
 fi
 
+# 7. Auto-Sync Let's Encrypt SSL certificates to Postfix & Dovecot if available
+if [ -f "sync-ssl.sh" ]; then
+    bash sync-ssl.sh 2>/dev/null || true
+fi
+
 echo -e "\n${GREEN}==============================================================================${NC}"
 echo -e "${GREEN}✅ AZION MAIL UPDATED SUCCESSFULLY!${NC}"
 echo -e "${GREEN}==============================================================================${NC}"
