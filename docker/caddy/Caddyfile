@@ -1,0 +1,32 @@
+{
+    email {$ACME_EMAIL:admin@azioncloud.com}
+    admin off
+}
+
+{$MAIL_HOST:localhost} {
+    # SnappyMail Webmail routing
+    handle_path /webmail* {
+        reverse_proxy webmail:8888
+    }
+
+    # Autoconfig & Autodiscover routes for email clients
+    handle /mail/config-v1.1.xml* {
+        reverse_proxy web:3000
+    }
+    handle /autodiscover/* {
+        reverse_proxy web:3000
+    }
+
+    # Main Azion Mail SaaS Dashboard & REST API
+    handle {
+        reverse_proxy web:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Compression
+    encode gzip zstd
+}

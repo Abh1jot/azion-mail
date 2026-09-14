@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  USER
+}
+
+enum DomainStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum DeliveryStatus {
+  SENT
+  QUEUED
+  DEFERRED
+  BOUNCED
+  REJECTED
+}
+
+model User {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  name              String?
+  passwordHash      String
+  role              Role              @default(USER)
+  twoFactorSecret   String?
+  twoFactorEnabled  Boolean           @default(false)
+  backupCodes       String[]          @default([])
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  sessions          Session[]
+  apiKeys           ApiKey[]
+  domains           Domain[]
+  cloudflareConfig  CloudflareConfig?
+  auditLogs         AuditLog[]
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  keyPrefix   String
+  keyHash     String    @unique
+  permissions String[]  @default(["read"])
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([keyHash])
+  @@index([userId])
+}
+
+model Domain {
+  id                 String       @id @default(cuid())
+  userId             String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain             String       @unique
+  status             DomainStatus @default(PENDING)
+  verificationToken  String       @default(cuid())
+  isVerified         Boolean      @default(false)
+  dkimSelector       String       @default("mail")
+  dkimPrivateKey     String       @db.Text
+  dkimPublicKey      String       @db.Text
+  cloudflareZoneId   String?
+  catchAllMailboxId  String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  mailboxes          Mailbox[]
+  aliases            Alias[]
+  forwarders         Forwarder[]
+
+  @@index([domain])
+  @@index([userId])
+}
+
+model Mailbox {
+  id           String    @id @default(cuid())
+  domainId     String
+  domain       Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  address      String    @unique
+  name         String?
+  passwordHash String
+  quotaBytes   BigInt    @default(5368709120) // 5GB default
+  usedBytes    BigInt    @default(0)
+  isActive     Boolean   @default(true)
+  isSuspended  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([address])
+  @@index([domainId])
+}
+
+model Alias {
+  id          String   @id @default(cuid())
+  domainId    String
+  domain      Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  source      String   @unique
+  destination String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([source])
+  @@index([domainId])
+}
+
+model Forwarder {
+  id            String   @id @default(cuid())
+  domainId      String
+  domain        Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  sourceAddress String
+  destinations  String[]
+  isCatchAll    Boolean  @default(false)
+  keepLocalCopy Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([sourceAddress])
+  @@index([domainId])
+}
+
+model CloudflareConfig {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiToken   String
+  autoSync   Boolean   @default(true)
+  lastSyncAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String
+  targetId   String?
+  details    String?  @db.Text
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+}
+
+model DeliveryLog {
+  id         String         @id @default(cuid())
+  messageId  String?
+  sender     String
+  recipient  String
+  status     DeliveryStatus @default(SENT)
+  response   String?        @db.Text
+  clientIp   String?
+  createdAt  DateTime       @default(now())
+
+  @@index([sender])
+  @@index([recipient])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}

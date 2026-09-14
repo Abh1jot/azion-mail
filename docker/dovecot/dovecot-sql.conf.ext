@@ -1,0 +1,18 @@
+# Dovecot PostgreSQL Authentication & Virtual User Query
+driver = pgsql
+connect = host=${POSTGRES_HOST} dbname=${POSTGRES_DB} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD}
+
+default_pass_scheme = BLF-CRYPT
+
+password_query = SELECT "address" as user, "passwordHash" as password \
+  FROM "Mailbox" \
+  WHERE "address" = '%u' AND "isActive" = true AND "isSuspended" = false
+
+user_query = SELECT 5000 as uid, 5000 as gid, \
+  concat('/var/mail/vhosts/', '%d', '/', '%n') as home, \
+  'maildir:/var/mail/vhosts/%d/%n' as mail, \
+  concat('*:bytes=', "quotaBytes") as quota_rule \
+  FROM "Mailbox" \
+  WHERE "address" = '%u' AND "isActive" = true
+
+iterate_query = SELECT "address" as user FROM "Mailbox" WHERE "isActive" = true

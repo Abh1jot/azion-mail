@@ -1,0 +1,6 @@
+# PostgreSQL Virtual Mailbox Maps Lookup
+hosts = ${POSTGRES_HOST}
+user = ${POSTGRES_USER}
+password = ${POSTGRES_PASSWORD}
+dbname = ${POSTGRES_DB}
+query = SELECT 1 FROM "Mailbox" m JOIN "Domain" d ON m."domainId" = d."id" WHERE m."address" = '%s' AND m."isActive" = true AND m."isSuspended" = false AND d."status" = 'ACTIVE'

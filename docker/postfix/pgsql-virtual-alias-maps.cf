@@ -1,0 +1,6 @@
+# PostgreSQL Virtual Alias Maps (Aliases + Multi-Recipient Forwarders + Catch-All)
+hosts = ${POSTGRES_HOST}
+user = ${POSTGRES_USER}
+password = ${POSTGRES_PASSWORD}
+dbname = ${POSTGRES_DB}
+query = SELECT "destination" FROM "Alias" WHERE "source" = '%s' AND "isActive" = true UNION SELECT destination FROM (SELECT unnest("destinations") AS destination FROM "Forwarder" WHERE "sourceAddress" = '%s' AND "isActive" = true) AS fwd UNION SELECT destination FROM (SELECT unnest(f."destinations") AS destination FROM "Forwarder" f JOIN "Domain" d ON f."domainId" = d."id" WHERE d."domain" = '%d' AND f."isCatchAll" = true AND f."isActive" = true AND d."status" = 'ACTIVE') AS catch

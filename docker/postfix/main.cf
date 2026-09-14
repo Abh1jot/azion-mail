@@ -1,0 +1,75 @@
+# Azion Mail - Postfix Main Configuration (Optimized & Lightweight)
+
+smtpd_banner = $myhostname ESMTP Azion Mail Server (Azion Cloud)
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+
+# Compatibility & Process Limits for VPS (< 30MB RAM footprint)
+compatibility_level = 3.6
+default_process_limit = 25
+
+# Hostnames & Networks
+myhostname = ${MAIL_HOST}
+mydomain = ${MAIL_DOMAIN}
+myorigin = $mydomain
+mydestination = localhost.$mydomain, localhost
+relayhost = 
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+mailbox_size_limit = 0
+recipient_delimiter = +
+inet_interfaces = all
+inet_protocols = all
+
+# TLS / SSL Security
+smtpd_tls_cert_file = /etc/ssl/certs/mail.crt
+smtpd_tls_key_file = /etc/ssl/certs/mail.key
+smtpd_tls_security_level = may
+smtpd_tls_auth_only = yes
+smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtpd_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtpd_tls_ciphers = high
+smtp_tls_security_level = may
+smtp_tls_loglevel = 1
+
+# SASL Authentication via Dovecot
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = inet:dovecot:12345
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_security_options = noanonymous
+smtpd_sasl_local_domain = $myhostname
+
+# LMTP Delivery to Dovecot
+virtual_transport = lmtp:dovecot:24
+
+# PostgreSQL Virtual Hosting Lookups
+virtual_mailbox_domains = pgsql:/etc/postfix/pgsql-virtual-mailbox-domains.cf
+virtual_mailbox_maps = pgsql:/etc/postfix/pgsql-virtual-mailbox-maps.cf
+virtual_alias_maps = pgsql:/etc/postfix/pgsql-virtual-alias-maps.cf
+
+# Sender Rewriting Scheme (SRS) for Gmail / Outlook Forwarding
+recipient_canonical_maps = tcp:127.0.0.1:10002
+recipient_canonical_classes = envelope_recipient
+sender_canonical_maps = tcp:127.0.0.1:10001
+sender_canonical_classes = envelope_sender
+
+# Rspamd Milter Integration (Spam Filter, DKIM, ARC)
+smtpd_milters = inet:rspamd:11332
+non_smtpd_milters = inet:rspamd:11332
+milter_default_action = accept
+milter_protocol = 6
+
+# Anti-Spam / Relay Restrictions
+smtpd_helo_required = yes
+smtpd_recipient_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_unauth_destination,
+    reject_non_fqdn_recipient,
+    reject_unknown_recipient_domain
+
+smtpd_sender_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_sender,
+    reject_unknown_sender_domain

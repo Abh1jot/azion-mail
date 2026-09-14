@@ -1,0 +1,226 @@
+version: '3.8'
+
+services:
+  # -------------------------------------------------------------------------
+  # 1. Reverse Proxy & Automatic SSL Engine (Caddy)
+  # -------------------------------------------------------------------------
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: azion-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - MAIL_HOST=${MAIL_HOST:-mail.azioncloud.com}
+      - ACME_EMAIL=${ACME_EMAIL:-admin@azioncloud.com}
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - azion_net
+    deploy:
+      resources:
+        limits:
+          memory: 45M
+
+  # -------------------------------------------------------------------------
+  # 2. Next.js 15 Web Dashboard & REST API
+  # -------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: ./docker/web/Dockerfile
+    container_name: azion-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-azion}:${POSTGRES_PASSWORD:-azion_secure_pass}@postgres:5432/${POSTGRES_DB:-azionmail}?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-azion-super-secure-jwt-secret-replace-in-production}
+      - MAIL_HOST=${MAIL_HOST:-mail.azioncloud.com}
+      - POSTFIX_HOST=postfix
+      - POSTFIX_PORT=25
+      - DOVECOT_HOST=dovecot
+      - DOVECOT_PORT=143
+      - RSPAMD_URL=http://rspamd:11334
+      - WEBMAIL_URL=https://${MAIL_HOST:-mail.azioncloud.com}/webmail
+      - ENABLE_CLAMAV=${ENABLE_CLAMAV:-false}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - azion_net
+    deploy:
+      resources:
+        limits:
+          memory: 160M
+
+  # -------------------------------------------------------------------------
+  # 3. PostgreSQL Database Engine (Tuned for VPS < 70MB RAM)
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: azion-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-azion}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-azion_secure_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-azionmail}
+    command: >
+      postgres -c shared_buffers=64MB
+               -c work_mem=4MB
+               -c maintenance_work_mem=16MB
+               -c max_connections=40
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-azion} -d ${POSTGRES_DB:-azionmail}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - azion_net
+    deploy:
+      resources:
+        limits:
+          memory: 90M
+
+  # -------------------------------------------------------------------------
+  # 4. Redis Cache & Session Store (< 30MB RAM)
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: azion-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru --save ""
+    volumes:
+      - redisdata:/data
+    networks:
+      - azion_net
+    deploy:
+      resources:
+        limits:
+          memory: 40M
+
+  # -------------------------------------------------------------------------
+  # 5. Postfix SMTP Server (Incoming & Outgoing Mail + SRS)
+  # -------------------------------------------------------------------------
+  postfix:
+    build:
+      context: ./docker/postfix
+      dockerfile: Dockerfile
+    container_name: azion-postfix
+    restart: unless-stopped
+    ports:
+      - "25:25"
+      - "587:587"
+      - "465:465"
+    environment:
+      - MAIL_HOST=${MAIL_HOST:-mail.azioncloud.com}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER:-azion}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-azion_secure_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-azionmail}
+    volumes:
+      - vmail_data:/var/mail/vhosts
+      - mail_certs:/etc/ssl/certs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rspamd:
+        condition: service_started
+    networks:
+      - azion_net
+    deploy:
+      resources:
+        limits:
+          memory: 45M
+
+  # -------------------------------------------------------------------------
+  # 6. Dovecot IMAP / POP3 / LMTP Mail Delivery Server
+  # -------------------------------------------------------------------------
+  dovecot:
+    build:
+      context: ./docker/dovecot
+      dockerfile: Dockerfile
+    container_name: azion-dovecot
+    restart: unless-stopped
+    ports:
+      - "110:110"
+      - "143:143"
+      - "993:993"
+      - "995:995"
+    environment:
+      - MAIL_HOST=${MAIL_HOST:-mail.azioncloud.com}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER:-azion}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-azion_secure_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-azionmail}
+    volumes:
+      - vmail_data:/var/mail/vhosts
+      - mail_certs:/etc/ssl/certs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - azion_net
+    deploy:
+      resources:
+        limits:
+          memory: 50M
+
+  # -------------------------------------------------------------------------
+  # 7. Rspamd Intelligent Spam Filtering & DKIM/ARC Signer
+  # -------------------------------------------------------------------------
+  rspamd:
+    build:
+      context: ./docker/rspamd
+      dockerfile: Dockerfile
+    container_name: azion-rspamd
+    restart: unless-stopped
+    volumes:
+      - rspamd_data:/var/lib/rspamd
+    depends_on:
+      - redis
+    networks:
+      - azion_net
+    deploy:
+      resources:
+        limits:
+          memory: 75M
+
+  # -------------------------------------------------------------------------
+  # 8. SnappyMail Ultra-Light Webmail Client (< 40MB RAM)
+  # -------------------------------------------------------------------------
+  webmail:
+    image: tinyrange/snappymail:latest
+    container_name: azion-webmail
+    restart: unless-stopped
+    volumes:
+      - snappymail_data:/snappymail/data
+    networks:
+      - azion_net
+    deploy:
+      resources:
+        limits:
+          memory: 50M
+
+networks:
+  azion_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  vmail_data:
+  mail_certs:
+  rspamd_data:
+  snappymail_data:
+  caddy_data:
+  caddy_config:
