@@ -91,11 +91,12 @@ forward-port = 10001
 reverse-port = 10002
 EOF
 
-# Start PostSRSd (support both 2.x and 1.x)
-if postsrsd -c /etc/postsrsd/postsrsd.conf 2>/dev/null & then
-    echo "Started PostSRSd daemon..."
-elif postsrsd -s /etc/postsrsd/postsrsd.secret -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody 2>/dev/null & then
-    echo "Started PostSRSd legacy daemon..."
+# Start PostSRSd in background (support both 2.x and 1.x syntax)
+postsrsd -c /etc/postsrsd/postsrsd.conf >/dev/null 2>&1 &
+SRSPID=$!
+sleep 0.5
+if ! kill -0 $SRSPID 2>/dev/null; then
+    postsrsd -s /etc/postsrsd/postsrsd.secret -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody >/dev/null 2>&1 &
 fi
 
 # Set mail storage permissions

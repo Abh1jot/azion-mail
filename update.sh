@@ -128,9 +128,9 @@ fi
 
 # 5. Rspamd Filtering
 if [ "$RSPAMD_CHANGED" = true ]; then
-    echo -e "${CYAN}🔄 Reloading Rspamd Filter service...${NC}"
-    docker compose restart rspamd
-    echo -e "${GREEN}✅ Rspamd updated & reloaded in 1s.${NC}"
+    echo -e "${CYAN}🔄 Updating & Reloading Rspamd Filter service...${NC}"
+    docker compose up -d --no-deps --build rspamd
+    echo -e "${GREEN}✅ Rspamd updated & reloaded in seconds.${NC}"
 fi
 
 # 6. Docker Compose Top-level

@@ -1,7 +1,7 @@
 FROM alpine:3.20
 
 RUN adduser -u 5000 -D -s /bin/false vmail && \
-    mkdir -p /etc/postfix /var/spool/postfix /var/mail/vhosts && \
+    mkdir -p /etc/postfix /var/mail/vhosts && \
     chown -R vmail:vmail /var/mail/vhosts
 
 RUN apk add --no-cache \
@@ -13,6 +13,8 @@ RUN apk add --no-cache \
     openssl \
     gettext-envsubst \
     supervisor
+
+RUN /usr/sbin/postfix set-permissions 2>/dev/null || true
 
 COPY main.cf /etc/postfix/main.cf
 COPY master.cf /etc/postfix/master.cf
