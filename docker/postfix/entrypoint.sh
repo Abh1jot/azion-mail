@@ -81,18 +81,19 @@ postfix set-permissions 2>/dev/null || true
 echo "🔄 Starting PostSRSD for SPF-compliant forwarding..."
 mkdir -p /etc/postsrsd
 echo "$SRS_SECRET" > /etc/postsrsd/postsrsd.secret
-chmod 600 /etc/postsrsd/postsrsd.secret
+chmod 644 /etc/postsrsd/postsrsd.secret
+chown -R postsrsd:postsrsd /etc/postsrsd 2>/dev/null || chown -R nobody:nobody /etc/postsrsd 2>/dev/null || true
 
-# Generate PostSRSd 2.x configuration
-cat <<EOF > /etc/postsrsd/postsrsd.conf
-domains = [ "$MAIL_DOMAIN", "$MAIL_HOST" ]
+# Generate PostSRSd configuration
+cat <<EOF > /etc/postsrsd.conf
+domains = { "$MAIL_DOMAIN", "$MAIL_HOST" }
 secrets-file = "/etc/postsrsd/postsrsd.secret"
 forward-port = 10001
 reverse-port = 10002
 EOF
 
 # Start PostSRSd in background (support both 2.x and 1.x syntax)
-postsrsd -c /etc/postsrsd/postsrsd.conf >/dev/null 2>&1 &
+postsrsd -c /etc/postsrsd.conf >/dev/null 2>&1 &
 SRSPID=$!
 sleep 0.5
 if ! kill -0 $SRSPID 2>/dev/null; then
