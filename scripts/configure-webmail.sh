@@ -87,6 +87,29 @@ cat << 'EOF' > "$TMP_JSON"
         "usePhpMail": false,
         "authPlainLine": false
     },
+    "Sieve": {
+        "host": "",
+        "port": 4190,
+        "type": 0,
+        "timeout": 10,
+        "shortLogin": false,
+        "lowerLogin": true,
+        "stripLogin": "",
+        "sasl": [
+            "PLAIN",
+            "LOGIN"
+        ],
+        "ssl": {
+            "verify_peer": false,
+            "verify_peer_name": false,
+            "allow_self_signed": true,
+            "SNI_enabled": false,
+            "disable_compression": true,
+            "security_level": 1
+        },
+        "enabled": false,
+        "authLiteral": true
+    },
     "whiteList": ""
 }
 EOF
