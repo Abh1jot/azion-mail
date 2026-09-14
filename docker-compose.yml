@@ -28,6 +28,7 @@ services:
   # 2. Next.js 15 Web Dashboard & REST API
   # -------------------------------------------------------------------------
   web:
+    image: ghcr.io/abh1jot/azion-mail-web:latest
     build:
       context: .
       dockerfile: ./docker/web/Dockerfile
