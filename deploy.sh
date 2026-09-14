@@ -97,6 +97,78 @@ else
     echo -e "${GREEN}✅ Existing .env detected.${NC}"
 fi
 
+# Detect if host port 80 or 443 is in use (e.g. Nginx for Pterodactyl Panel / Paymenter)
+HOST_WEB_SERVER=false
+if ss -tlpn 2>/dev/null | grep -E ':(80|443)\s' >/dev/null || lsof -i :80 -sTCP:LISTEN >/dev/null 2>&1 || netstat -tlpn 2>/dev/null | grep -E ':(80|443)\s' >/dev/null; then
+    HOST_WEB_SERVER=true
+fi
+
+set_env_var() {
+    local key="$1"
+    local val="$2"
+    if grep -q "^${key}=" .env; then
+        sed -i "s|^${key}=.*|${key}=${val}|" .env
+    else
+        echo "${key}=${val}" >> .env
+    fi
+}
+
+CURRENT_HOST=$(grep "^MAIL_HOST=" .env 2>/dev/null | cut -d '=' -f2)
+CURRENT_HOST=${CURRENT_HOST:-mail.azioncloud.com}
+
+if [ "$HOST_WEB_SERVER" = true ]; then
+    echo -e "${YELLOW}⚠️ Port 80/443 is already in use by host services (Pterodactyl Panel / Paymenter / Nginx).${NC}"
+    echo -e "${CYAN}🔄 Enabling Coexistence Mode (Mapping Azion Mail Reverse Proxy to 127.0.0.1:8088)...${NC}"
+    set_env_var "CADDY_BIND_IP" "127.0.0.1"
+    set_env_var "CADDY_HTTP_PORT" "8088"
+    set_env_var "CADDY_HTTPS_PORT" "8443"
+    set_env_var "CADDY_SITE_ADDR" ":80"
+
+    # Configure host Nginx if installed
+    if command -v nginx &>/dev/null && [ -d /etc/nginx/sites-available ]; then
+        echo -e "${CYAN}⚙️  Configuring host Nginx reverse proxy for ${CURRENT_HOST}...${NC}"
+        cat > /etc/nginx/sites-available/azion-mail.conf << EOF
+# ==============================================================================
+# Azion Mail Reverse Proxy (Coexistence with Pterodactyl & Paymenter)
+# ==============================================================================
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${CURRENT_HOST};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8088;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+        client_max_body_size 50M;
+    }
+}
+EOF
+        mkdir -p /etc/nginx/sites-enabled
+        ln -sf /etc/nginx/sites-available/azion-mail.conf /etc/nginx/sites-enabled/azion-mail.conf
+        if nginx -t &>/dev/null; then
+            systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null || true
+            echo -e "${GREEN}✅ Host Nginx reverse proxy loaded successfully.${NC}"
+        fi
+    fi
+else
+    set_env_var "CADDY_BIND_IP" "0.0.0.0"
+    set_env_var "CADDY_HTTP_PORT" "80"
+    set_env_var "CADDY_HTTPS_PORT" "443"
+    set_env_var "CADDY_SITE_ADDR" ":80"
+fi
+
 # Load active environment variables for health checks
 set -a
 [ -f .env ] && . .env
@@ -128,11 +200,21 @@ CURRENT_PASS=$(grep "^INITIAL_ADMIN_PASSWORD=" .env | cut -d '=' -f2)
 echo -e "\n${GREEN}==============================================================================${NC}"
 echo -e "${GREEN}🎉 AZION MAIL HAS BEEN SUCCESSFULLY DEPLOYED TO YOUR VPS!${NC}"
 echo -e "${GREEN}==============================================================================${NC}"
-echo -e "🌐 Dashboard Console:  ${CYAN}https://${CURRENT_HOST}${NC} (or http://<YOUR_VPS_IP>:3000)"
-echo -e "📬 SnappyMail Webmail:  ${CYAN}https://${CURRENT_HOST}/webmail${NC}"
+echo -e "🌐 Dashboard Console:  ${CYAN}http://${CURRENT_HOST}${NC} (or http://<YOUR_VPS_IP>:3000)"
+echo -e "📬 SnappyMail Webmail:  ${CYAN}http://${CURRENT_HOST}/webmail${NC}"
 echo -e "👤 Admin Email:        ${CYAN}${CURRENT_ADMIN}${NC}"
 echo -e "🔑 Admin Password:     ${YELLOW}${CURRENT_PASS}${NC}"
 echo -e "------------------------------------------------------------------------------"
+
+if [ "$HOST_WEB_SERVER" = true ]; then
+    echo -e "⚙️  COEXISTENCE MODE ACTIVE (Running alongside Pterodactyl & Paymenter):"
+    echo -e " • Azion Mail internal proxy running on: http://127.0.0.1:8088"
+    echo -e " • Host Nginx configuration: /etc/nginx/sites-available/azion-mail.conf"
+    echo -e " • To enable free SSL (HTTPS) via your host's Certbot, run:"
+    echo -e "   ${YELLOW}sudo certbot --nginx -d ${CURRENT_HOST}${NC}"
+    echo -e "------------------------------------------------------------------------------"
+fi
+
 echo -e "🚀 NEXT STEPS:"
 echo -e " 1. Point your domain A record for '${CURRENT_HOST}' to your VPS public IP."
 echo -e " 2. Log in to the console and click 'System Diagnostics' -> 'Run Full System Test'."

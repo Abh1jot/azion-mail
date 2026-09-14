@@ -3,7 +3,7 @@
     admin off
 }
 
-{$MAIL_HOST:localhost} {
+{$CADDY_SITE_ADDR::80} {
     # SnappyMail Webmail routing
     handle_path /webmail* {
         reverse_proxy webmail:8888
