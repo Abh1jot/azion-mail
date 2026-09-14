@@ -8,11 +8,21 @@
     redir /webmail /webmail/ 308
 
     handle_path /webmail* {
-        reverse_proxy webmail:8888
+        reverse_proxy webmail:8888 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
     handle /snappymail* {
-        reverse_proxy webmail:8888
+        reverse_proxy webmail:8888 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
     # Autoconfig & Autodiscover routes for email clients

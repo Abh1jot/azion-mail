@@ -53,9 +53,10 @@ docker compose cp -L "$KEY_PATH" dovecot:/etc/ssl/certs/mail.key
 docker compose exec -T dovecot chmod 644 /etc/ssl/certs/mail.crt
 docker compose exec -T dovecot chmod 600 /etc/ssl/certs/mail.key
 
-echo -e "${CYAN}⚡ Reloading Postfix and Dovecot mail daemons...${NC}"
+echo -e "${CYAN}⚡ Reloading Postfix, Dovecot, and Caddy services...${NC}"
 docker compose exec -T postfix postfix reload 2>/dev/null || docker compose restart postfix
 docker compose exec -T dovecot dovecot reload 2>/dev/null || docker compose restart dovecot
+docker compose restart caddy 2>/dev/null || true
 
 # Sync DKIM keys into Rspamd
 echo -e "${CYAN}🔑 Exporting DKIM keys and restarting Rspamd Milter...${NC}"
