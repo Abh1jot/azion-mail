@@ -132,6 +132,7 @@ services:
       - vmail_data:/var/mail/vhosts
       - mail_certs:/etc/ssl/certs
       - ./docker/postfix/entrypoint.sh:/entrypoint.sh:ro
+      - ./docker/postfix/master.cf:/etc/postfix/master.cf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - caddy_data:/data:ro
     depends_on:

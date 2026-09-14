@@ -20,6 +20,7 @@ mailbox_size_limit = 0
 recipient_delimiter = +
 inet_interfaces = all
 inet_protocols = all
+smtpd_peername_lookup = no
 
 # TLS / SSL Security
 smtpd_tls_cert_file = /etc/ssl/certs/mail.crt

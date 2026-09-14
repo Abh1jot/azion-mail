@@ -114,16 +114,16 @@ fi
 
 # 3. Postfix SMTP
 if [ "$POSTFIX_CHANGED" = true ]; then
-    echo -e "${CYAN}🔄 Reloading Postfix SMTP service...${NC}"
-    docker compose restart postfix
-    echo -e "${GREEN}✅ Postfix updated & reloaded in 1s.${NC}"
+    echo -e "${CYAN}🔄 Updating & Reloading Postfix SMTP service...${NC}"
+    docker compose up -d --no-deps --build postfix
+    echo -e "${GREEN}✅ Postfix updated & reloaded in seconds.${NC}"
 fi
 
 # 4. Dovecot IMAP
 if [ "$DOVECOT_CHANGED" = true ]; then
-    echo -e "${CYAN}🔄 Reloading Dovecot IMAP service...${NC}"
-    docker compose restart dovecot
-    echo -e "${GREEN}✅ Dovecot updated & reloaded in 1s.${NC}"
+    echo -e "${CYAN}🔄 Updating & Reloading Dovecot IMAP service...${NC}"
+    docker compose up -d --no-deps --build dovecot
+    echo -e "${GREEN}✅ Dovecot updated & reloaded in seconds.${NC}"
 fi
 
 # 5. Rspamd Filtering
