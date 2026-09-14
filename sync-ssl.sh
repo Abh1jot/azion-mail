@@ -64,6 +64,9 @@ docker compose exec -T web node scripts/export-dkim.js 2>/dev/null || true
 docker compose exec -T rspamd chown -R rspamd:rspamd /var/lib/rspamd/dkim 2>/dev/null || true
 docker compose restart rspamd 2>/dev/null || true
 
+# Auto-configure SnappyMail webmail connections
+bash scripts/configure-webmail.sh 2>/dev/null || true
+
 echo -e "\n${GREEN}==============================================================================${NC}"
 echo -e "${GREEN}🎉 SSL CERTIFICATE SYNCED SUCCESSFULLY!${NC}"
 echo -e "Your official Let's Encrypt certificate is now active on:"
