@@ -1,5 +1,9 @@
 FROM alpine:3.20
 
+RUN adduser -u 5000 -D -s /bin/false vmail && \
+    mkdir -p /var/mail/vhosts /etc/dovecot/conf.d && \
+    chown -R vmail:vmail /var/mail/vhosts
+
 RUN apk add --no-cache \
     dovecot \
     dovecot-pgsql \
@@ -8,10 +12,6 @@ RUN apk add --no-cache \
     ca-certificates \
     bash \
     openssl
-
-RUN adduser -u 5000 -D -s /bin/false vmail && \
-    mkdir -p /var/mail/vhosts /etc/dovecot/conf.d && \
-    chown -R vmail:vmail /var/mail/vhosts
 
 COPY dovecot.conf /etc/dovecot/dovecot.conf
 COPY dovecot-sql.conf.ext /etc/dovecot/dovecot-sql.conf.ext
