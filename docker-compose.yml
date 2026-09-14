@@ -131,6 +131,8 @@ services:
     volumes:
       - vmail_data:/var/mail/vhosts
       - mail_certs:/etc/ssl/certs
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - caddy_data:/data:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -166,6 +168,8 @@ services:
     volumes:
       - vmail_data:/var/mail/vhosts
       - mail_certs:/etc/ssl/certs
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - caddy_data:/data:ro
     depends_on:
       postgres:
         condition: service_healthy
