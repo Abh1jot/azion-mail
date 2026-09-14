@@ -210,7 +210,7 @@ services:
     container_name: azion-webmail
     restart: unless-stopped
     volumes:
-      - snappymail_data:/snappymail/data
+      - snappymail_data:/var/lib/snappymail
     networks:
       - azion_net
     deploy:

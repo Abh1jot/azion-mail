@@ -24,7 +24,8 @@ if ! docker compose ps webmail 2>/dev/null | grep -q "Up"; then
     sleep 2
 fi
 
-# Create domains directory inside webmail container
+# Create domains directories inside webmail container
+docker compose exec -T webmail mkdir -p /var/lib/snappymail/_data_/_default_/domains
 docker compose exec -T webmail mkdir -p /snappymail/data/_data_/_default_/domains
 
 # Generate default domain template
@@ -90,23 +91,49 @@ cat << 'EOF' > "$TMP_JSON"
 }
 EOF
 
-# Copy into container as default.json and as BASE_DOMAIN.json
-docker compose cp "$TMP_JSON" webmail:/snappymail/data/_data_/_default_/domains/default.json
-docker compose cp "$TMP_JSON" webmail:/snappymail/data/_data_/_default_/domains/${BASE_DOMAIN}.json
+# Copy into all possible container data paths
+for d in "/var/lib/snappymail/_data_/_default_/domains" \
+         "/var/lib/snappymail/_data_/${MAIL_HOST}/domains" \
+         "/snappymail/data/_data_/_default_/domains"; do
+    docker compose exec -T webmail mkdir -p "$d" 2>/dev/null || true
+    docker compose cp "$TMP_JSON" webmail:"$d/default.json" 2>/dev/null || true
+    docker compose cp "$TMP_JSON" webmail:"$d/${BASE_DOMAIN}.json" 2>/dev/null || true
+done
 rm -f "$TMP_JSON"
 
 # Fix permissions so SnappyMail can read and write
-docker compose exec -T webmail chmod -R 777 /snappymail/data/_data_/_default_/domains
+docker compose exec -T webmail chmod -R 777 /var/lib/snappymail 2>/dev/null || true
+docker compose exec -T webmail chmod -R 777 /snappymail/data 2>/dev/null || true
 
-# Restart webmail to flush caches
+# Test connectivity from webmail to dovecot
+echo -e "${CYAN}📡 Testing IMAP connectivity from Webmail to Dovecot...${NC}"
+if docker compose exec -T webmail nc -z -w 3 dovecot 143 2>/dev/null; then
+    echo -e "${GREEN}✅ Webmail ➔ Dovecot:143 connection SUCCESSFUL!${NC}"
+else
+    echo -e "${YELLOW}⚠️ Dovecot:143 not responding directly via netcat, trying restart...${NC}"
+fi
+
+# Restart webmail container to apply changes
 docker compose restart webmail
 
-echo -e "${GREEN}✅ SnappyMail successfully configured!${NC}"
+echo -e "\n${GREEN}==============================================================================${NC}"
+echo -e "${GREEN}🎉 SNAPPYMAIL WEBMAIL SUCCESSFULLY CONFIGURED!${NC}"
 echo -e " • IMAP Host: ${CYAN}dovecot:143${NC}"
 echo -e " • SMTP Host: ${CYAN}postfix:587${NC}"
 echo -e " • Configured Domains: ${CYAN}default, ${BASE_DOMAIN}${NC}"
-if docker compose exec -T webmail test -f /snappymail/data/_data_/_default_/admin_password.txt 2>/dev/null; then
-    ADMIN_PASS=$(docker compose exec -T webmail cat /snappymail/data/_data_/_default_/admin_password.txt 2>/dev/null | tr -d '\r\n')
-    echo -e " • SnappyMail Admin URL: ${CYAN}https://${MAIL_HOST}/webmail/?admin${NC} (User: admin, Pass: ${YELLOW}${ADMIN_PASS}${NC})"
+
+ADMIN_PASS=""
+for p in "/var/lib/snappymail/_data_/_default_/admin_password.txt" \
+         "/snappymail/data/_data_/_default_/admin_password.txt"; do
+    if docker compose exec -T webmail test -f "$p" 2>/dev/null; then
+        ADMIN_PASS=$(docker compose exec -T webmail cat "$p" 2>/dev/null | tr -d '\r\n')
+        break
+    fi
+done
+
+if [ -n "$ADMIN_PASS" ]; then
+    echo -e " • SnappyMail Admin Panel: ${CYAN}https://${MAIL_HOST}/webmail/?admin${NC}"
+    echo -e "   👤 User: ${CYAN}admin${NC} | 🔑 Password: ${YELLOW}${ADMIN_PASS}${NC}"
 fi
+echo -e "${GREEN}==============================================================================${NC}\n"
 echo ""
