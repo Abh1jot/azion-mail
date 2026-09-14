@@ -4,6 +4,7 @@ smtpd_banner = $myhostname ESMTP Azion Mail Server (Azion Cloud)
 biff = no
 append_dot_mydomain = no
 readme_directory = no
+maillog_file = /dev/stdout
 
 # Compatibility & Process Limits for VPS (< 30MB RAM footprint)
 compatibility_level = 3.6
