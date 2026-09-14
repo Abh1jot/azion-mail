@@ -200,7 +200,7 @@ CURRENT_PASS=$(grep "^INITIAL_ADMIN_PASSWORD=" .env | cut -d '=' -f2)
 echo -e "\n${GREEN}==============================================================================${NC}"
 echo -e "${GREEN}🎉 AZION MAIL HAS BEEN SUCCESSFULLY DEPLOYED TO YOUR VPS!${NC}"
 echo -e "${GREEN}==============================================================================${NC}"
-echo -e "🌐 Dashboard Console:  ${CYAN}http://${CURRENT_HOST}${NC} (or http://<YOUR_VPS_IP>:3000)"
+echo -e "🌐 Dashboard Console:  ${CYAN}http://${CURRENT_HOST}${NC}"
 echo -e "📬 SnappyMail Webmail:  ${CYAN}http://${CURRENT_HOST}/webmail${NC}"
 echo -e "👤 Admin Email:        ${CYAN}${CURRENT_ADMIN}${NC}"
 echo -e "🔑 Admin Password:     ${YELLOW}${CURRENT_PASS}${NC}"
