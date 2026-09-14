@@ -65,15 +65,40 @@ for file in /etc/postfix/main.cf /etc/postfix/pgsql-*.cf; do
     fi
 done
 
+# Set up and fix Postfix spool and queue permissions
+echo "🔧 Configuring Postfix mail queue permissions..."
+mkdir -p /var/spool/postfix /var/spool/postfix/pid /var/spool/postfix/maildrop /var/spool/postfix/public /var/spool/postfix/incoming /var/spool/postfix/active /var/spool/postfix/deferred /var/spool/postfix/bounce /var/spool/postfix/defer /var/spool/postfix/trace /var/spool/postfix/corrupt /var/spool/postfix/flush /var/spool/postfix/hold /var/spool/postfix/saved
+chown -R postfix:root /var/spool/postfix
+chown -R postfix:postdrop /var/spool/postfix/public /var/spool/postfix/maildrop
+chmod 710 /var/spool/postfix/public
+chmod 730 /var/spool/postfix/maildrop
+chmod -R 700 /var/spool/postfix/incoming /var/spool/postfix/active /var/spool/postfix/deferred /var/spool/postfix/bounce /var/spool/postfix/defer /var/spool/postfix/trace /var/spool/postfix/corrupt /var/spool/postfix/hold /var/spool/postfix/saved
+chgrp postdrop /usr/sbin/postdrop /usr/sbin/postqueue 2>/dev/null || true
+chmod 2755 /usr/sbin/postdrop /usr/sbin/postqueue 2>/dev/null || true
+postfix set-permissions 2>/dev/null || true
+
 # Initialize Postsrsd for Sender Rewriting Scheme (SRS)
-echo "🔄 Starting PostSRSD for SPF-compliant Gmail/Outlook forwarding..."
+echo "🔄 Starting PostSRSD for SPF-compliant forwarding..."
 mkdir -p /etc/postsrsd
 echo "$SRS_SECRET" > /etc/postsrsd/postsrsd.secret
-chown -R nobody:nobody /etc/postsrsd
 chmod 600 /etc/postsrsd/postsrsd.secret
-postsrsd -s /etc/postsrsd/postsrsd.secret -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody &
 
-# Set permissions
+# Generate PostSRSd 2.x configuration
+cat <<EOF > /etc/postsrsd/postsrsd.conf
+domains = [ "$MAIL_DOMAIN", "$MAIL_HOST" ]
+secrets-file = "/etc/postsrsd/postsrsd.secret"
+forward-port = 10001
+reverse-port = 10002
+EOF
+
+# Start PostSRSd (support both 2.x and 1.x)
+if postsrsd -c /etc/postsrsd/postsrsd.conf 2>/dev/null & then
+    echo "Started PostSRSd daemon..."
+elif postsrsd -s /etc/postsrsd/postsrsd.secret -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody 2>/dev/null & then
+    echo "Started PostSRSd legacy daemon..."
+fi
+
+# Set mail storage permissions
 chown -R vmail:vmail /var/mail/vhosts 2>/dev/null || true
 newaliases 2>/dev/null || true
 

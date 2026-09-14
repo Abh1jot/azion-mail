@@ -11,6 +11,8 @@ submission inet n       -       n       -       -       smtpd
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
   -o milter_macro_daemon_name=ORIGINATING
+  -o recipient_canonical_maps=
+  -o sender_canonical_maps=
 
 smtps     inet  n       -       n       -       -       smtpd
   -o syslog_name=postfix/smtps
@@ -19,6 +21,8 @@ smtps     inet  n       -       n       -       -       smtpd
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
   -o milter_macro_daemon_name=ORIGINATING
+  -o recipient_canonical_maps=
+  -o sender_canonical_maps=
 
 pickup    unix  n       -       y       60      1       pickup
 cleanup   unix  n       -       y       -       0       cleanup
