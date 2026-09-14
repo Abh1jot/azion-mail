@@ -57,6 +57,12 @@ echo -e "${CYAN}⚡ Reloading Postfix and Dovecot mail daemons...${NC}"
 docker compose exec -T postfix postfix reload 2>/dev/null || docker compose restart postfix
 docker compose exec -T dovecot dovecot reload 2>/dev/null || docker compose restart dovecot
 
+# Sync DKIM keys into Rspamd
+echo -e "${CYAN}🔑 Exporting DKIM keys and restarting Rspamd Milter...${NC}"
+docker compose exec -T web node scripts/export-dkim.js 2>/dev/null || true
+docker compose exec -T rspamd chown -R rspamd:rspamd /var/lib/rspamd/dkim 2>/dev/null || true
+docker compose restart rspamd 2>/dev/null || true
+
 echo -e "\n${GREEN}==============================================================================${NC}"
 echo -e "${GREEN}🎉 SSL CERTIFICATE SYNCED SUCCESSFULLY!${NC}"
 echo -e "Your official Let's Encrypt certificate is now active on:"

@@ -192,6 +192,7 @@ services:
     restart: unless-stopped
     volumes:
       - rspamd_data:/var/lib/rspamd
+      - ./docker/rspamd/local.d:/etc/rspamd/local.d
     depends_on:
       - redis
     networks:
