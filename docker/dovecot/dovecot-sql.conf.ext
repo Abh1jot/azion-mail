@@ -4,15 +4,16 @@ connect = host=${POSTGRES_HOST} dbname=${POSTGRES_DB} user=${POSTGRES_USER} pass
 
 default_pass_scheme = BLF-CRYPT
 
-password_query = SELECT "address" as user, "passwordHash" as password \
-  FROM "Mailbox" \
-  WHERE "address" = '%u' AND "isActive" = true AND "isSuspended" = false
+password_query = SELECT m."address" as user, m."passwordHash" as password \
+  FROM "Mailbox" m JOIN "Domain" d ON m."domainId" = d."id" \
+  WHERE m."address" = '%u' AND m."isActive" = true AND m."isSuspended" = false AND d."status" = 'ACTIVE'
 
 user_query = SELECT 5000 as uid, 5000 as gid, \
   concat('/var/mail/vhosts/', '%d', '/', '%n') as home, \
   'maildir:/var/mail/vhosts/%d/%n' as mail, \
-  concat('*:bytes=', "quotaBytes") as quota_rule \
-  FROM "Mailbox" \
-  WHERE "address" = '%u' AND "isActive" = true
+  concat('*:bytes=', m."quotaBytes") as quota_rule \
+  FROM "Mailbox" m JOIN "Domain" d ON m."domainId" = d."id" \
+  WHERE m."address" = '%u' AND m."isActive" = true AND d."status" = 'ACTIVE'
 
-iterate_query = SELECT "address" as user FROM "Mailbox" WHERE "isActive" = true
+iterate_query = SELECT m."address" as user FROM "Mailbox" m JOIN "Domain" d ON m."domainId" = d."id" WHERE m."isActive" = true AND d."status" = 'ACTIVE'
+

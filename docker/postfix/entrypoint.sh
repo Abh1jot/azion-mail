@@ -32,7 +32,11 @@ done
 
 # Initialize Postsrsd for Sender Rewriting Scheme (SRS)
 echo "🔄 Starting PostSRSD for SPF-compliant Gmail/Outlook forwarding..."
-postsrsd -s "$SRS_SECRET" -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody &
+mkdir -p /etc/postsrsd
+echo "$SRS_SECRET" > /etc/postsrsd/postsrsd.secret
+chown -R nobody:nobody /etc/postsrsd
+chmod 600 /etc/postsrsd/postsrsd.secret
+postsrsd -s /etc/postsrsd/postsrsd.secret -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody &
 
 # Set permissions
 chown -R vmail:vmail /var/mail/vhosts 2>/dev/null || true

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { generateDkimKeyPair } from '@/lib/dkim';
+import { generateDkimKeyPair, saveDkimKeyToFile } from '@/lib/dkim';
 import { DomainStatus } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
   if (existing) return NextResponse.json({ error: 'Domain already exists' }, { status: 400 });
 
   const dkim = generateDkimKeyPair('mail');
+  saveDkimKeyToFile(cleanDomain, dkim.selector, dkim.privateKeyPem);
   const newDomain = await prisma.domain.create({
     data: {
       domain: cleanDomain,

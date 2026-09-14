@@ -36,9 +36,14 @@ export async function testSmtpConnection(options: SmtpTestOptions): Promise<Smtp
   const t0 = Date.now();
   try {
     banner = await new Promise<string>((resolve, reject) => {
-      const socket = net.createConnection(port, host, () => {
-        socket.setTimeout(8000);
-      });
+      const isImplicitTls = secure || port === 465;
+      const socket = isImplicitTls
+        ? tls.connect({ host, port, rejectUnauthorized: false }, () => {
+            socket.setTimeout(8000);
+          })
+        : net.createConnection(port, host, () => {
+            socket.setTimeout(8000);
+          });
 
       socket.once('data', (data) => {
         const response = data.toString().trim();
@@ -48,7 +53,7 @@ export async function testSmtpConnection(options: SmtpTestOptions): Promise<Smtp
 
       socket.on('timeout', () => {
         socket.destroy();
-        reject(new Error(`TCP connection timed out after 8000ms connecting to ${host}:${port}`));
+        reject(new Error(`Connection timed out after 8000ms connecting to ${host}:${port}`));
       });
 
       socket.on('error', (err) => {

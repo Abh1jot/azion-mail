@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 export interface DkimKeyPair {
   privateKeyPem: string;
@@ -6,6 +8,27 @@ export interface DkimKeyPair {
   dnsTxtRecord: string;
   selector: string;
 }
+
+/**
+ * Saves a domain's DKIM private key to /var/lib/rspamd/dkim for Rspamd signing
+ */
+export function saveDkimKeyToFile(domain: string, selector: string, privateKeyPem: string): boolean {
+  try {
+    const dkimDir = '/var/lib/rspamd/dkim';
+    if (!fs.existsSync(dkimDir)) {
+      fs.mkdirSync(dkimDir, { recursive: true, mode: 0o755 });
+    }
+    const cleanDomain = domain.toLowerCase().trim();
+    const keyPath = path.join(dkimDir, `${cleanDomain}.${selector}.key`);
+    fs.writeFileSync(keyPath, privateKeyPem, { mode: 0o644 });
+    return true;
+  } catch (err) {
+    // In local dev without mounted rspamd volume, fail gracefully
+    console.warn(`[DKIM] Note: Could not write DKIM key file for ${domain}:`, (err as any)?.message);
+    return false;
+  }
+}
+
 
 /**
  * Generates an RSA 2048-bit DKIM Keypair and formatted DNS TXT value.

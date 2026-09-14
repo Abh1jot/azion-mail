@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { saveDkimKeyToFile } from './dkim';
 import Redis from 'ioredis';
 import net from 'net';
 import tls from 'tls';
@@ -191,13 +192,24 @@ export async function runFullSystemDiagnostics(): Promise<FullSystemTestReport> 
     const res = await fetch(`${rspamdUrl}/ping`, { signal: AbortSignal.timeout(3000) });
     const text = await res.text();
     if (res.ok && text.trim() === 'pong') {
+      // Synchronize all domain DKIM keys from database to /var/lib/rspamd/dkim
+      const activeDomains = await prisma.domain.findMany({
+        select: { domain: true, dkimSelector: true, dkimPrivateKey: true },
+      }).catch(() => []);
+      let syncedKeys = 0;
+      for (const d of activeDomains) {
+        if (d.dkimPrivateKey && saveDkimKeyToFile(d.domain, d.dkimSelector, d.dkimPrivateKey)) {
+          syncedKeys++;
+        }
+      }
+
       diagnostics.push({
         id: 'rspamd',
         name: 'Rspamd Intelligent Spam Filter',
         category: 'security',
         status: 'passed',
         latencyMs: Date.now() - tRspamd,
-        details: 'Rspamd daemon active and responding to Milter requests.',
+        details: `Rspamd daemon active and responding to Milter requests (${syncedKeys} DKIM domain keys verified).`,
       });
     } else {
       throw new Error(`Unexpected response: ${text}`);

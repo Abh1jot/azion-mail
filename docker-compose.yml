@@ -45,8 +45,11 @@ services:
       - RSPAMD_URL=http://rspamd:11334
       - WEBMAIL_URL=https://${MAIL_HOST:-mail.azioncloud.com}/webmail
       - ENABLE_CLAMAV=${ENABLE_CLAMAV:-false}
+    ports:
+      - "3000:3000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - rspamd_data:/var/lib/rspamd
     depends_on:
       postgres:
         condition: service_healthy

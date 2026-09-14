@@ -11,7 +11,8 @@ RUN apk add --no-cache \
     dovecot-pop3d \
     ca-certificates \
     bash \
-    openssl
+    openssl \
+    gettext-envsubst
 
 COPY dovecot.conf /etc/dovecot/dovecot.conf
 COPY dovecot-sql.conf.ext /etc/dovecot/dovecot-sql.conf.ext

@@ -11,6 +11,7 @@ RUN apk add --no-cache \
     ca-certificates \
     bash \
     openssl \
+    gettext-envsubst \
     supervisor
 
 COPY main.cf /etc/postfix/main.cf

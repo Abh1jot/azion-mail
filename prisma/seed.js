@@ -1,3 +1,28 @@
+const fs = require('fs');
+const path = require('path');
+
+// Simple .env parser fallback if DATABASE_URL not yet exported in current shell
+if (!process.env.DATABASE_URL) {
+  const envPath = path.resolve(__dirname, '../.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const match = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)?\s*$/);
+      if (match && !process.env[match[1]]) {
+        process.env[match[1]] = match[2].trim().replace(/^['"]|['"]$/g, '');
+      }
+    }
+  }
+}
+
+if (!process.env.DATABASE_URL && process.env.POSTGRES_USER) {
+  const user = process.env.POSTGRES_USER || 'azion';
+  const pass = process.env.POSTGRES_PASSWORD || 'azion_secure_pass';
+  const host = process.env.POSTGRES_HOST || 'localhost';
+  const db = process.env.POSTGRES_DB || 'azionmail';
+  process.env.DATABASE_URL = `postgresql://${user}:${pass}@${host}:5432/${db}?schema=public`;
+}
+
 const { PrismaClient, Role } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 

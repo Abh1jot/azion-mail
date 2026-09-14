@@ -75,7 +75,7 @@ if [ ! -f .env ]; then
     # Generate secure random secrets
     PG_PASS=$(openssl rand -hex 16)
     JWT_SEC=$(openssl rand -hex 32)
-    ADMIN_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9!@#$' | head -c 14)
+    ADMIN_PASS=$(openssl rand -hex 8)Az1!
 
     sed -i "s/replace_with_ultra_secure_password_in_prod/$PG_PASS/g" .env
     sed -i "s/azion_jwt_secret_64_characters_long_random_string_replace_in_prod/$JWT_SEC/g" .env
@@ -96,6 +96,11 @@ if [ ! -f .env ]; then
 else
     echo -e "${GREEN}✅ Existing .env detected.${NC}"
 fi
+
+# Load active environment variables for health checks
+set -a
+[ -f .env ] && . .env
+set +a
 
 # Build and Launch Docker Compose Containers
 echo -e "${CYAN}🐳 Step 4: Building & Launching Lightweight Containers...${NC}"
