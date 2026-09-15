@@ -3,6 +3,8 @@ import { getAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import { syncPostfixDeliveryLogs } from '@/lib/log-collector';
+// NOTE: syncPostfixDeliveryLogs is only called on POST (manual sync button).
+// Never auto-called on GET — it spawns a docker logs shell process which hammers CPU.
 
 export async function GET(req: NextRequest) {
   try {

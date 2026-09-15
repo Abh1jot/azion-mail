@@ -60,7 +60,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 160M
+          memory: 256M
+          cpus: '0.8'
 
   # -------------------------------------------------------------------------
   # 3. PostgreSQL Database Engine (Tuned for VPS < 70MB RAM)
@@ -145,7 +146,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 45M
+          memory: 60M
+          cpus: '0.3'
 
   # -------------------------------------------------------------------------
   # 6. Dovecot IMAP / POP3 / LMTP Mail Delivery Server
@@ -201,7 +203,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 150M
+          memory: 220M
+          cpus: '0.5'
 
   # -------------------------------------------------------------------------
   # 8. SnappyMail Ultra-Light Webmail Client (< 40MB RAM)
