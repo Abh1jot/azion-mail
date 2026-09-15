@@ -56,11 +56,11 @@ export async function GET(req: NextRequest) {
         if (spf) { spfValue = spf; spfOk = true; }
       } catch {}
       try {
-        const dkimTxt = await dns.resolveTxt(${d.dkimSelector}._domainkey.);
+        const dkimTxt = await dns.resolveTxt(`${d.dkimSelector}._domainkey.${d.domain}`);
         if (dkimTxt?.length > 0) dkimOk = true;
       } catch {}
       try {
-        const dmarcTxt = await dns.resolveTxt(_dmarc.);
+        const dmarcTxt = await dns.resolveTxt(`_dmarc.${d.domain}`);
         if (dmarcTxt?.length > 0) dmarcOk = true;
       } catch {}
       return { domain: d.domain, spfOk, dkimOk, dmarcOk, spfValue };
@@ -75,9 +75,9 @@ export async function GET(req: NextRequest) {
     if (allDmarc) score += 15;
 
     const recommendations: string[] = [];
-    if (!ptrValid) recommendations.push(Set PTR/rDNS for IP  to  in your VPS control panel. Gmail requires this.);
+    if (!ptrValid) recommendations.push(`Set PTR/rDNS for IP ${primaryIp} to ${mailHost} in your VPS control panel. Gmail requires this.`);
     if (!allDkim) recommendations.push('DKIM record missing — publish mail._domainkey TXT record or use 1-Click Cloudflare Sync.');
-    if (!allSpf) recommendations.push(SPF missing — add: v=spf1 ip4: mx a: ~all);
+    if (!allSpf) recommendations.push(`SPF missing — add: v=spf1 ip4:${primaryIp} mx a:${mailHost} ~all`);
 
     const result = {
       score: Math.min(100, Math.max(10, score)),
