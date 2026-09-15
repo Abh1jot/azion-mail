@@ -100,10 +100,11 @@ if ! kill -0 $SRSPID 2>/dev/null; then
     postsrsd -s /etc/postsrsd/postsrsd.secret -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody >/dev/null 2>&1 &
 fi
 
-# Configure internal mail archiver transport
+# Configure internal mail archiver transport (texthash: — no postmap compile needed on Alpine)
 echo "📦 Configuring sent mail archiver pipe transport..."
 echo "archive.internal azion-archive:" > /etc/postfix/transport
-postmap /etc/postfix/transport
+# NOTE: texthash: reads the plain text file directly — postmap is NOT required
+# postmap /etc/postfix/transport  ← removed: Alpine postfix lacks hash/db support
 
 if [ -f /etc/postfix/archive-mail.py ] && [ ! -f /usr/local/bin/archive-mail.py ]; then
     cp /etc/postfix/archive-mail.py /usr/local/bin/archive-mail.py

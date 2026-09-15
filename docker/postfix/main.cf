@@ -39,6 +39,12 @@ smtp_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
 smtp_tls_mandatory_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
 smtp_tls_ciphers = medium
 smtp_tls_note_starttls_offer = yes
+smtp_tls_CApath = /etc/ssl/certs
+
+# Rate limiting — prevent bot hammering from triggering false deferred state
+smtpd_client_connection_count_limit = 20
+smtpd_client_connection_rate_limit = 30
+anvil_rate_time_unit = 60s
 
 # Guarantee RFC-5322 compliance (Missing Message-ID/Date headers cause Gmail spam placement)
 always_add_missing_headers = yes
@@ -53,8 +59,8 @@ smtpd_sasl_local_domain = $myhostname
 # LMTP Delivery to Dovecot
 virtual_transport = lmtp:dovecot:24
 
-# Transport maps for internal archive piping
-transport_maps = hash:/etc/postfix/transport
+# Transport maps for internal archive piping (texthash: requires no postmap compile — compatible with Alpine)
+transport_maps = texthash:/etc/postfix/transport
 
 # PostgreSQL Virtual Hosting Lookups
 virtual_mailbox_domains = pgsql:/etc/postfix/pgsql-virtual-mailbox-domains.cf

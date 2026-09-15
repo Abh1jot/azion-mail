@@ -10,6 +10,7 @@ submission inet n       -       n       -       -       smtpd
   -o smtpd_tls_auth_only=yes
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+  -o smtpd_sender_restrictions=permit_sasl_authenticated,reject
   -o milter_macro_daemon_name=ORIGINATING
   -o smtpd_milters=inet:rspamd:11332
   -o non_smtpd_milters=inet:rspamd:11332
@@ -23,6 +24,7 @@ smtps     inet  n       -       n       -       -       smtpd
   -o smtpd_sasl_auth_enable=yes
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+  -o smtpd_sender_restrictions=permit_sasl_authenticated,reject
   -o milter_macro_daemon_name=ORIGINATING
   -o smtpd_milters=inet:rspamd:11332
   -o non_smtpd_milters=inet:rspamd:11332

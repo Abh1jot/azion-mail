@@ -36,29 +36,48 @@ export async function testSmtpConnection(options: SmtpTestOptions): Promise<Smtp
   const t0 = Date.now();
   try {
     banner = await new Promise<string>((resolve, reject) => {
+      const TIMEOUT_MS = 12000;
       const isImplicitTls = secure || port === 465;
+
       const socket = isImplicitTls
-        ? tls.connect({ host, port, rejectUnauthorized: false }, () => {
-            socket.setTimeout(8000);
-          })
-        : net.createConnection(port, host, () => {
-            socket.setTimeout(8000);
-          });
+        ? tls.connect({ host, port, rejectUnauthorized: false })
+        : net.createConnection(port, host);
+
+      const timer = setTimeout(() => {
+        socket.destroy();
+        reject(
+          new Error(
+            `TCP connection timed out after ${TIMEOUT_MS / 1000}s — port ${port} appears to be blocked by a firewall or ISP. ` +
+              `On your VPS run: sudo ufw allow ${port}/tcp`
+          )
+        );
+      }, TIMEOUT_MS);
 
       socket.once('data', (data) => {
+        clearTimeout(timer);
         const response = data.toString().trim();
         socket.end();
         resolve(response);
       });
 
-      socket.on('timeout', () => {
-        socket.destroy();
-        reject(new Error(`Connection timed out after 8000ms connecting to ${host}:${port}`));
+      socket.on('connect', () => {
+        // For plain SMTP (port 25/587) the server sends the greeting automatically.
+        // For SMTPS (port 465, implicit TLS) the greeting comes after TLS handshake.
+        // We just wait — don't send anything, don't close the socket.
       });
 
-      socket.on('error', (err) => {
+      socket.on('error', (err: any) => {
+        clearTimeout(timer);
         socket.destroy();
-        reject(err);
+        let msg = err.message;
+        if (err.code === 'ECONNREFUSED') {
+          msg = `Connection refused on port ${port} — Postfix is not listening on this port, or the port is not exposed in docker-compose.`;
+        } else if (err.code === 'ETIMEDOUT') {
+          msg = `TCP timeout on port ${port} — blocked by firewall. On your VPS run: sudo ufw allow ${port}/tcp`;
+        } else if (err.code === 'ENOTFOUND') {
+          msg = `DNS resolution failed for "${host}" — verify your MAIL_HOST domain has an A record pointing to this server.`;
+        }
+        reject(new Error(msg));
       });
     });
 
@@ -72,7 +91,7 @@ export async function testSmtpConnection(options: SmtpTestOptions): Promise<Smtp
     steps.push({
       step: 'TCP Connection & SMTP Banner',
       success: false,
-      message: `Failed to connect to ${host}:${port}: ${err.message}`,
+      message: err.message,
       durationMs: Date.now() - t0,
     });
     return {
@@ -94,8 +113,9 @@ export async function testSmtpConnection(options: SmtpTestOptions): Promise<Smtp
       tls: {
         rejectUnauthorized: process.env.NODE_ENV === 'production' && !host.includes('localhost'),
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 5000,
+      connectionTimeout: 20000,
+      greetingTimeout: 12000,
+      socketTimeout: 20000,
     });
 
     await transporter.verify();
