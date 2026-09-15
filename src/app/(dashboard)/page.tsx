@@ -43,26 +43,23 @@ export default function DashboardOverview() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [domRes, boxRes, aliRes, fwdRes, logRes, delivRes] = await Promise.all([
+        // Only fetch what's needed for the overview — no heavy DNS/deliverability checks on load
+        const [domRes, boxRes, fwdRes, logRes] = await Promise.all([
           fetch('/api/domains'),
           fetch('/api/mailboxes'),
-          fetch('/api/aliases'),
           fetch('/api/forwarders'),
           fetch('/api/admin/logs?limit=5'),
-          fetch('/api/admin/deliverability-check').catch(() => null),
         ]);
 
         const domData = await domRes.json();
         const boxData = await boxRes.json();
-        const aliData = await aliRes.json();
         const fwdData = await fwdRes.json();
         const logData = await logRes.json();
-        const delivData = delivRes ? await delivRes.json() : null;
 
         setStats({
           domains: domData.domains?.length || 0,
           mailboxes: boxData.mailboxes?.length || 0,
-          aliases: aliData.aliases?.length || 0,
+          aliases: 0,
           forwarders: fwdData.forwarders?.length || 0,
           sent: logData.stats?.sent || 0,
           bounced: logData.stats?.bounced || 0,
@@ -73,7 +70,6 @@ export default function DashboardOverview() {
         setRecentDomains((domData.domains || []).slice(0, 5));
         setRecentSentMails(logData.logs || []);
         setRecentBounces((logData.logs || []).filter((l: any) => l.status === 'BOUNCED' || l.status === 'REJECTED'));
-        setDeliverability(delivData);
       } catch (err) {
         console.error('Error fetching dashboard stats:', err);
       } finally {
