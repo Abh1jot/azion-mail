@@ -14,11 +14,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!domain) return NextResponse.json({ error: 'Domain not found' }, { status: 404 });
 
     const mailHost = process.env.MAIL_HOST || 'mail.azioncloud.com';
+    let vpsIp: string | undefined = undefined;
+    try {
+      const dns = await import('dns/promises');
+      const ips = await dns.resolve4(mailHost);
+      if (ips && ips.length > 0) vpsIp = ips[0];
+    } catch {}
+
     const recommendedRecords = getDomainRecommendedDns(
       domain.domain,
       mailHost,
       domain.dkimPublicKey,
-      domain.dkimSelector
+      domain.dkimSelector,
+      vpsIp
     );
 
     // Live public DNS verification

@@ -100,6 +100,16 @@ if ! kill -0 $SRSPID 2>/dev/null; then
     postsrsd -s /etc/postsrsd/postsrsd.secret -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody >/dev/null 2>&1 &
 fi
 
+# Configure internal mail archiver transport
+echo "📦 Configuring sent mail archiver pipe transport..."
+echo "archive.internal azion-archive:" > /etc/postfix/transport
+postmap /etc/postfix/transport
+
+if [ -f /etc/postfix/archive-mail.py ] && [ ! -f /usr/local/bin/archive-mail.py ]; then
+    cp /etc/postfix/archive-mail.py /usr/local/bin/archive-mail.py
+fi
+chmod +x /usr/local/bin/archive-mail.py 2>/dev/null || true
+
 # Set mail storage permissions
 chown -R vmail:vmail /var/mail/vhosts 2>/dev/null || true
 newaliases 2>/dev/null || true

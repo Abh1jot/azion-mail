@@ -17,6 +17,7 @@ import {
   Sparkles,
   LifeBuoy,
   FileCode2,
+  Send,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,9 +32,10 @@ export default function Sidebar({ userRole = 'USER' }: SidebarProps) {
     { label: 'Overview', href: '/', icon: Activity },
     { label: 'Domains', href: '/domains', icon: Globe },
     { label: 'Mailboxes', href: '/mailboxes', icon: Mail },
+    { label: 'Sent Mails & Logs', href: '/admin/logs', icon: Send, highlight: true },
     { label: 'Aliases', href: '/aliases', icon: Repeat },
     { label: 'Forwarders', href: '/forwarders', icon: Forward },
-    { label: 'Gmail Wizard', href: '/gmail-wizard', icon: Sparkles, highlight: true },
+    { label: 'Gmail Wizard', href: '/gmail-wizard', icon: Sparkles },
     { label: 'Outlook / Client Setup', href: '/outlook-wizard', icon: LifeBuoy },
     { label: 'System Test & Health', href: '/test-setup', icon: ShieldCheck, badge: 'Diagnostic' },
   ];
@@ -41,7 +43,6 @@ export default function Sidebar({ userRole = 'USER' }: SidebarProps) {
   const adminItems = [
     { label: 'Admin Dashboard', href: '/admin', icon: Server },
     { label: 'Mail Queue', href: '/admin/queue', icon: Layers },
-    { label: 'Delivery Logs', href: '/admin/logs', icon: FileCode2 },
   ];
 
   return (

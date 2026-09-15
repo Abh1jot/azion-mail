@@ -11,6 +11,9 @@ submission inet n       -       n       -       -       smtpd
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
   -o milter_macro_daemon_name=ORIGINATING
+  -o smtpd_milters=inet:rspamd:11332
+  -o non_smtpd_milters=inet:rspamd:11332
+  -o always_bcc=sent-archive@archive.internal
   -o recipient_canonical_maps=
   -o sender_canonical_maps=
 
@@ -21,6 +24,9 @@ smtps     inet  n       -       n       -       -       smtpd
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
   -o milter_macro_daemon_name=ORIGINATING
+  -o smtpd_milters=inet:rspamd:11332
+  -o non_smtpd_milters=inet:rspamd:11332
+  -o always_bcc=sent-archive@archive.internal
   -o recipient_canonical_maps=
   -o sender_canonical_maps=
 
@@ -48,3 +54,8 @@ lmtp      unix  -       -       n       -       -       lmtp
 anvil     unix  -       -       n       -       1       anvil
 scache    unix  -       -       n       -       1       scache
 postlog   unix-dgram n  -       n       -       1       postlogd
+
+# Azion Mail Sent Email Archiver Pipe Transport
+azion-archive unix -    n       n       -       -       pipe
+  flags=Fq user=nobody argv=/usr/bin/python3 /usr/local/bin/archive-mail.py ${sender} ${recipient}
+

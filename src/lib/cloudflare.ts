@@ -97,15 +97,24 @@ export class CloudflareClient {
     domain: string,
     mailHost: string,
     dkimPublicKey: string,
-    selector: string = 'mail'
+    selector: string = 'mail',
+    vpsIp?: string
   ): Promise<{
     created: string[];
     updated: string[];
     unchanged: string[];
     errors: string[];
   }> {
+    if (!vpsIp) {
+      try {
+        const dns = await import('dns/promises');
+        const ips = await dns.resolve4(mailHost);
+        if (ips && ips.length > 0) vpsIp = ips[0];
+      } catch {}
+    }
+
     const existing = await this.listDnsRecords(zoneId);
-    const required = getDomainRecommendedDns(domain, mailHost, dkimPublicKey, selector);
+    const required = getDomainRecommendedDns(domain, mailHost, dkimPublicKey, selector, vpsIp);
 
     const created: string[] = [];
     const updated: string[] = [];

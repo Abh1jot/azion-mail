@@ -65,12 +65,22 @@ export function generateDkimKeyPair(selector: string = 'mail'): DkimKeyPair {
 /**
  * Returns formatted DNS records needed for a domain (MX, SPF, DKIM, DMARC)
  */
-export function getDomainRecommendedDns(domain: string, mailHost: string, dkimPublicKey: string, selector: string = 'mail') {
+export function getDomainRecommendedDns(
+  domain: string,
+  mailHost: string,
+  dkimPublicKey: string,
+  selector: string = 'mail',
+  vpsIp?: string
+) {
   // Extract base64 part of public key
   const pubClean = dkimPublicKey
     .replace(/-----BEGIN PUBLIC KEY-----/g, '')
     .replace(/-----END PUBLIC KEY-----/g, '')
     .replace(/[\r\n\s]/g, '');
+
+  const spfValue = vpsIp
+    ? `v=spf1 ip4:${vpsIp} mx a:${mailHost} ~all`
+    : `v=spf1 mx a:${mailHost} ~all`;
 
   return [
     {
@@ -83,7 +93,7 @@ export function getDomainRecommendedDns(domain: string, mailHost: string, dkimPu
     {
       type: 'TXT',
       name: domain,
-      value: `v=spf1 mx a:${mailHost} ~all`,
+      value: spfValue,
       description: 'Authorizes Azion Mail server to send on behalf of this domain',
     },
     {
@@ -95,8 +105,8 @@ export function getDomainRecommendedDns(domain: string, mailHost: string, dkimPu
     {
       type: 'TXT',
       name: `_dmarc.${domain}`,
-      value: `v=DMARC1; p=quarantine; sp=quarantine; rua=mailto:dmarc-reports@${domain}`,
-      description: 'DMARC alignment policy and feedback delivery',
+      value: `v=DMARC1; p=none; sp=none; rua=mailto:dmarc-reports@${domain}`,
+      description: 'DMARC alignment policy (p=none prevents initial Gmail spam quarantine while reputation establishes)',
     },
     {
       type: 'CNAME',
