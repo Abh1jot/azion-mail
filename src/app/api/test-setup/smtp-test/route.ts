@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
       password: body.password,
       sendProbeTo: body.sendProbeTo,
       fromAddress: body.fromAddress || body.username,
+      // Pass the public hostname as TLS SNI servername when using internal Docker routing
+      servername: connectHost !== requestedHost ? requestedHost : undefined,
     });
 
     return NextResponse.json({

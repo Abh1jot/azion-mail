@@ -10,6 +10,8 @@ export interface SmtpTestOptions {
   password?: string;
   sendProbeTo?: string;
   fromAddress?: string;
+  /** TLS SNI servername — set to the public hostname when connecting via an internal Docker alias */
+  servername?: string;
 }
 
 export interface SmtpTestResult {
@@ -112,6 +114,8 @@ export async function testSmtpConnection(options: SmtpTestOptions): Promise<Smtp
       auth: username && password ? { user: username, pass: password } : undefined,
       tls: {
         rejectUnauthorized: process.env.NODE_ENV === 'production' && !host.includes('localhost'),
+        // Use the public hostname for SNI cert validation when connecting via an internal alias
+        servername: options.servername || host,
       },
       connectionTimeout: 20000,
       greetingTimeout: 12000,
