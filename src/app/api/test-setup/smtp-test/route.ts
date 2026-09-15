@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         internalHost: connectHost !== requestedHost ? connectHost : undefined,
         note:
           connectHost !== requestedHost
-            ? `Connected via internal Docker host (${connectHost}) — hairpin NAT bypass`
+            ? `Connected via internal Docker host (${connectHost}) â€” hairpin NAT bypass`
             : undefined,
       },
     });
