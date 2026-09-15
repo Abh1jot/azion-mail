@@ -19,6 +19,8 @@ import {
   Server,
   Layers,
   HelpCircle,
+  Calendar,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -56,6 +58,75 @@ export default function AdminLogsPage() {
   const [activeTab, setActiveTab] = useState<'sent' | 'raw' | 'audit'>('sent');
   const [selectedMail, setSelectedMail] = useState<DeliveryLogItem | null>(null);
   const [mailBodyView, setMailBodyView] = useState<'html' | 'text' | 'tech'>('html');
+  const [retentionDays, setRetentionDays] = useState<number>(7);
+  const [purging, setPurging] = useState(false);
+  const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const fetchRetention = async () => {
+    try {
+      const res = await fetch('/api/admin/logs/retention');
+      const data = await res.json();
+      if (data.retentionDays !== undefined) {
+        setRetentionDays(data.retentionDays);
+      }
+    } catch {}
+  };
+
+  const handleUpdateRetention = async (newDays: number) => {
+    try {
+      const res = await fetch('/api/admin/logs/retention', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ retentionDays: newDays }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRetentionDays(newDays);
+        setToastMsg({
+          type: 'success',
+          text:
+            newDays === 0
+              ? 'Retention policy updated: Keep all logs indefinitely.'
+              : `Retention policy set to ${newDays} days. Auto-purged ${data.purgedCount || 0} expired logs.`,
+        });
+        fetchLogs();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      setToastMsg({ type: 'error', text: err.message || 'Failed to update retention' });
+    }
+  };
+
+  const handleManualPurge = async () => {
+    if (
+      !confirm(
+        retentionDays === 0
+          ? 'Retention is currently set to keep all logs. Change retention to 7, 14, or 30 days to purge old logs.'
+          : `Permanently delete all emails and logs older than ${retentionDays} days?`
+      )
+    ) {
+      return;
+    }
+    if (retentionDays === 0) return;
+
+    setPurging(true);
+    try {
+      const res = await fetch('/api/admin/logs/retention', { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        setToastMsg({
+          type: 'success',
+          text: `Cleaned up ${data.purgedCount} logs older than ${retentionDays} days.`,
+        });
+        fetchLogs();
+      }
+    } catch (err: any) {
+      setToastMsg({ type: 'error', text: err.message || 'Failed to purge logs' });
+    } finally {
+      setPurging(false);
+    }
+  };
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -92,6 +163,7 @@ export default function AdminLogsPage() {
 
   useEffect(() => {
     fetchLogs();
+    fetchRetention();
   }, [statusFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -123,17 +195,73 @@ export default function AdminLogsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Retention Setting Selector */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dark-surface border border-dark-border text-xs">
+            <Calendar className="h-3.5 w-3.5 text-azion-400 shrink-0" />
+            <span className="text-dark-muted hidden sm:inline">Retention:</span>
+            <select
+              value={retentionDays}
+              onChange={(e) => handleUpdateRetention(parseInt(e.target.value, 10))}
+              className="bg-transparent text-white font-semibold cursor-pointer focus:outline-none text-xs"
+              title="Automatically purge emails and logs older than this duration"
+            >
+              <option value={3} className="bg-dark-card text-white">3 Days</option>
+              <option value={7} className="bg-dark-card text-white">7 Days (Default)</option>
+              <option value={14} className="bg-dark-card text-white">14 Days</option>
+              <option value={30} className="bg-dark-card text-white">30 Days</option>
+              <option value={90} className="bg-dark-card text-white">90 Days</option>
+              <option value={0} className="bg-dark-card text-white">Keep Indefinitely</option>
+            </select>
+          </div>
+
+          {/* Manual Purge Button */}
+          <button
+            onClick={handleManualPurge}
+            disabled={purging || retentionDays === 0}
+            title={retentionDays === 0 ? "Retention is unlimited" : `Purge all logs older than ${retentionDays} days now`}
+            className="p-2 rounded-xl bg-dark-surface border border-dark-border text-slate-400 hover:text-rose-400 hover:border-rose-500/30 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Trash2 className={`h-3.5 w-3.5 ${purging ? 'animate-spin text-rose-400' : ''}`} />
+          </button>
+
+          {/* Sync Logs Button */}
           <button
             onClick={handleSyncLogs}
             disabled={syncing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-azion-600 hover:bg-azion-500 text-white text-xs font-semibold shadow-md shadow-azion-500/20 transition-all cursor-pointer disabled:opacity-50"
           >
             <RotateCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
-            <span>{syncing ? 'Syncing Postfix...' : 'Sync Postfix Logs'}</span>
+            <span>{syncing ? 'Syncing...' : 'Sync Postfix Logs'}</span>
           </button>
         </div>
       </div>
+
+      {/* Toast Notification Banner */}
+      {toastMsg && (
+        <div
+          className={`p-3 px-4 rounded-xl border text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200 ${
+            toastMsg.type === 'success'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {toastMsg.type === 'success' ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+            )}
+            <span>{toastMsg.text}</span>
+          </div>
+          <button
+            onClick={() => setToastMsg(null)}
+            className="text-slate-400 hover:text-white cursor-pointer p-0.5"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

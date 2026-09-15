@@ -109,6 +109,9 @@ export async function syncPostfixDeliveryLogs(): Promise<{
       }
     }
 
+    // Auto-enforce retention policy during sync
+    await enforceRetentionPolicy();
+
     return {
       syncedCount,
       errorCount,
@@ -123,3 +126,67 @@ export async function syncPostfixDeliveryLogs(): Promise<{
     };
   }
 }
+
+/**
+ * Gets configured retention days for sent mails and delivery logs (Default: 7 days)
+ */
+export async function getRetentionDays(): Promise<number> {
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: 'log_retention_days' },
+    });
+    return setting ? parseInt(setting.value, 10) : 7;
+  } catch {
+    return 7;
+  }
+}
+
+/**
+ * Updates configured retention days (e.g. 7, 14, 30, 0 = unlimited)
+ */
+export async function setRetentionDays(days: number): Promise<number> {
+  const safeDays = Math.max(0, days);
+  await prisma.systemSetting.upsert({
+    where: { key: 'log_retention_days' },
+    update: { value: String(safeDays) },
+    create: { key: 'log_retention_days', value: String(safeDays) },
+  });
+  return safeDays;
+}
+
+/**
+ * Enforces log retention policy: automatically deletes delivery logs and sent mails older than retentionDays
+ */
+export async function enforceRetentionPolicy(customDays?: number): Promise<{
+  purgedCount: number;
+  retentionDays: number;
+}> {
+  try {
+    const days = customDays !== undefined ? customDays : await getRetentionDays();
+
+    // 0 means keep logs indefinitely / unlimited
+    if (days <= 0) {
+      return { purgedCount: 0, retentionDays: 0 };
+    }
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+
+    const result = await prisma.deliveryLog.deleteMany({
+      where: {
+        createdAt: {
+          lt: cutoff,
+        },
+      },
+    });
+
+    return {
+      purgedCount: result.count,
+      retentionDays: days,
+    };
+  } catch (err) {
+    console.error('[Retention Policy Error]:', err);
+    return { purgedCount: 0, retentionDays: customDays || 7 };
+  }
+}
+
