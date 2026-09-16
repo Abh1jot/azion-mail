@@ -18,18 +18,19 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'workflow_dispatch' ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'src/') ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'prisma/') ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'public/') ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'package') ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'next.config') ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'docker/web/')
+      contains(toJson(github.event.commits.*.modified), 'src/') ||
+      contains(toJson(github.event.commits.*.added),    'src/') ||
+      contains(toJson(github.event.commits.*.removed),  'src/') ||
+      contains(toJson(github.event.commits.*.modified), 'prisma/') ||
+      contains(toJson(github.event.commits.*.added),    'prisma/') ||
+      contains(toJson(github.event.commits.*.removed),  'prisma/') ||
+      contains(toJson(github.event.commits.*.modified), 'public/') ||
+      contains(toJson(github.event.commits.*.added),    'public/') ||
+      contains(toJson(github.event.commits.*.modified), 'package') ||
+      contains(toJson(github.event.commits.*.added),    'package') ||
+      contains(toJson(github.event.commits.*.modified), 'next.config') ||
+      contains(toJson(github.event.commits.*.modified), 'docker/web/') ||
+      contains(toJson(github.event.commits.*.added),    'docker/web/')
     steps:
       - uses: actions/checkout@v4
 
@@ -74,8 +75,9 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'workflow_dispatch' ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'docker/postfix/')
+      contains(toJson(github.event.commits.*.modified), 'docker/postfix/') ||
+      contains(toJson(github.event.commits.*.added),    'docker/postfix/') ||
+      contains(toJson(github.event.commits.*.removed),  'docker/postfix/')
     steps:
       - uses: actions/checkout@v4
 
@@ -120,8 +122,9 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'workflow_dispatch' ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'docker/dovecot/')
+      contains(toJson(github.event.commits.*.modified), 'docker/dovecot/') ||
+      contains(toJson(github.event.commits.*.added),    'docker/dovecot/') ||
+      contains(toJson(github.event.commits.*.removed),  'docker/dovecot/')
     steps:
       - uses: actions/checkout@v4
 
@@ -166,8 +169,9 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'workflow_dispatch' ||
-      contains(toJson(github.event.commits.*.modified + github.event.commits.*.added + github.event.commits.*.removed),
-        'docker/rspamd/')
+      contains(toJson(github.event.commits.*.modified), 'docker/rspamd/') ||
+      contains(toJson(github.event.commits.*.added),    'docker/rspamd/') ||
+      contains(toJson(github.event.commits.*.removed),  'docker/rspamd/')
     steps:
       - uses: actions/checkout@v4
 
