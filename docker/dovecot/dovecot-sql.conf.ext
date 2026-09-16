@@ -4,7 +4,8 @@ connect = host=${POSTGRES_HOST} dbname=${POSTGRES_DB} user=${POSTGRES_USER} pass
 
 default_pass_scheme = BLF-CRYPT
 
-password_query = SELECT m."address" as user, m."passwordHash" as password \
+password_query = SELECT m."address" as user, \
+  replace(m."passwordHash", '$2b$', '$2y$') as password \
   FROM "Mailbox" m JOIN "Domain" d ON m."domainId" = d."id" \
   WHERE m."address" = '%u' AND m."isActive" = true AND m."isSuspended" = false AND d."status" = 'ACTIVE'
 
