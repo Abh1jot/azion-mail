@@ -67,11 +67,11 @@ virtual_mailbox_domains = pgsql:/etc/postfix/pgsql-virtual-mailbox-domains.cf
 virtual_mailbox_maps = pgsql:/etc/postfix/pgsql-virtual-mailbox-maps.cf
 virtual_alias_maps = pgsql:/etc/postfix/pgsql-virtual-alias-maps.cf
 
-# Sender Rewriting Scheme (SRS) for Gmail / Outlook Forwarding (Disabled to prevent lookup error)
-# recipient_canonical_maps = tcp:127.0.0.1:10002
-# recipient_canonical_classes = envelope_recipient
-# sender_canonical_maps = tcp:127.0.0.1:10001
-# sender_canonical_classes = envelope_sender
+# Sender Rewriting Scheme (SRS) for Gmail / Outlook Forwarding
+recipient_canonical_maps = tcp:127.0.0.1:10002
+recipient_canonical_classes = envelope_recipient
+sender_canonical_maps = tcp:127.0.0.1:10001
+sender_canonical_classes = envelope_sender
 
 # Rspamd Milter Integration (Spam Filter, DKIM, ARC)
 smtpd_milters = inet:rspamd:11332

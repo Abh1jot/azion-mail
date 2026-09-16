@@ -84,58 +84,61 @@ fi
 # Apply updates conditionally based on changes
 # -----------------------------------------------------------------------------
 
+# Helper: pull image from GHCR, fallback to local build
+pull_or_build() {
+    local service="$1"
+    echo -e "${BLUE}📦 Pulling pre-built ${service} image from GHCR...${NC}"
+    if docker compose pull "$service" 2>/dev/null; then
+        echo -e "${GREEN}✅ Pulled ${service} from GHCR. Restarting...${NC}"
+        docker compose up -d --no-deps "$service"
+    else
+        echo -e "${YELLOW}⚙️  GHCR pull failed. Building ${service} locally (takes longer)...${NC}"
+        DOCKER_BUILDKIT=1 docker compose up -d --no-deps --build "$service"
+    fi
+}
+
 # 1. Web / Dashboard / API
 if [ "$WEB_CHANGED" = true ]; then
     echo -e "\n${CYAN}⚡ Web application changes detected! Updating Web service...${NC}"
-    
-    # Try pulling pre-built image first from GitHub Container Registry (takes seconds)
-    echo -e "${BLUE}📦 Checking for pre-built image from GitHub Container Registry...${NC}"
-    if docker compose pull web 2>/dev/null; then
-        echo -e "${GREEN}✅ Downloaded pre-built image! Starting container...${NC}"
-        docker compose up -d --no-deps web
-    else
-        echo -e "${YELLOW}⚙️  Building web container locally with BuildKit cache...${NC}"
-        DOCKER_BUILDKIT=1 docker compose build web
-        docker compose up -d --no-deps web
-    fi
-
+    pull_or_build web
     echo -e "${CYAN}🗄️ Checking database schema status...${NC}"
-    docker compose exec -T web npx prisma db push --accept-data-loss || true
+    docker compose exec -T web npx prisma migrate deploy 2>/dev/null || docker compose exec -T web npx prisma db push --accept-data-loss || true
 else
-    echo -e "${GREEN}✨ No web code changes detected. Skipped web build entirely!${NC}"
+    echo -e "${GREEN}✨ No web code changes detected. Skipped entirely!${NC}"
 fi
 
-# 2. Caddy Reverse Proxy
+# 2. Caddy Reverse Proxy (config-only — just restart, no image build needed)
 if [ "$CADDY_CHANGED" = true ]; then
     echo -e "${CYAN}🔄 Reloading Caddy Reverse Proxy configuration...${NC}"
     docker compose restart caddy
-    echo -e "${GREEN}✅ Caddy updated & reloaded in 1s.${NC}"
+    echo -e "${GREEN}✅ Caddy reloaded in 1s.${NC}"
 fi
 
 # 3. Postfix SMTP
 if [ "$POSTFIX_CHANGED" = true ]; then
-    echo -e "${CYAN}🔄 Updating & Reloading Postfix SMTP service...${NC}"
-    docker compose up -d --no-deps --build postfix
-    echo -e "${GREEN}✅ Postfix updated & reloaded in seconds.${NC}"
+    echo -e "${CYAN}🔄 Updating Postfix SMTP service...${NC}"
+    pull_or_build postfix
+    echo -e "${GREEN}✅ Postfix updated.${NC}"
 fi
 
 # 4. Dovecot IMAP
 if [ "$DOVECOT_CHANGED" = true ]; then
-    echo -e "${CYAN}🔄 Updating & Reloading Dovecot IMAP service...${NC}"
-    docker compose up -d --no-deps --build dovecot
-    echo -e "${GREEN}✅ Dovecot updated & reloaded in seconds.${NC}"
+    echo -e "${CYAN}🔄 Updating Dovecot IMAP service...${NC}"
+    pull_or_build dovecot
+    echo -e "${GREEN}✅ Dovecot updated.${NC}"
 fi
 
 # 5. Rspamd Filtering
 if [ "$RSPAMD_CHANGED" = true ]; then
-    echo -e "${CYAN}🔄 Updating & Reloading Rspamd Filter service...${NC}"
-    docker compose up -d --no-deps --build rspamd
-    echo -e "${GREEN}✅ Rspamd updated & reloaded in seconds.${NC}"
+    echo -e "${CYAN}🔄 Updating Rspamd Filter service...${NC}"
+    pull_or_build rspamd
+    echo -e "${GREEN}✅ Rspamd updated.${NC}"
 fi
 
-# 6. Docker Compose Top-level
+# 6. Docker Compose infrastructure changes (new volumes / networks / env)
 if [ "$COMPOSE_CHANGED" = true ]; then
     echo -e "${CYAN}🔄 Applying Docker Compose infrastructure updates...${NC}"
+    docker compose pull 2>/dev/null || true
     docker compose up -d
 fi
 

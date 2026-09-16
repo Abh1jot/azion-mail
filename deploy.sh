@@ -9,6 +9,7 @@ CYAN='\033[0;36m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}"
@@ -75,11 +76,13 @@ if [ ! -f .env ]; then
     # Generate secure random secrets
     PG_PASS=$(openssl rand -hex 16)
     JWT_SEC=$(openssl rand -hex 32)
-    ADMIN_PASS=$(openssl rand -hex 8)Az1!
+    ADMIN_PASS="$(openssl rand -hex 8)Az1!"
 
     sed -i "s/replace_with_ultra_secure_password_in_prod/$PG_PASS/g" .env
     sed -i "s/azion_jwt_secret_64_characters_long_random_string_replace_in_prod/$JWT_SEC/g" .env
-    sed -i "s/AzionAdmin2026!/$ADMIN_PASS/g" .env
+    sed -i "s|AzWbwZfTN9Y%hVErqU@s!9|$ADMIN_PASS|g" .env
+    ARCHIVE_SECRET=$(openssl rand -hex 24)
+    sed -i "s/replace_with_random_internal_secret/$ARCHIVE_SECRET/g" .env
 
     # Prompt for domain if running interactively
     if [ -t 0 ]; then
@@ -174,9 +177,17 @@ set -a
 [ -f .env ] && . .env
 set +a
 
-# Build and Launch Docker Compose Containers
-echo -e "${CYAN}🐳 Step 4: Building & Launching Lightweight Containers...${NC}"
-docker compose up -d --build
+# Pull Pre-Built Images from GitHub Container Registry and Launch
+echo -e "${CYAN}🐳 Step 4: Pulling Pre-Built Images from GHCR & Launching Containers...${NC}"
+echo -e "${BLUE}📦 Pulling images (this takes seconds, not minutes — built by GitHub Actions)...${NC}"
+if docker compose pull 2>/dev/null; then
+    echo -e "${GREEN}✅ All images pulled successfully from GHCR.${NC}"
+    docker compose up -d
+else
+    echo -e "${YELLOW}⚠️  GHCR pull failed (first deploy or private repo). Building locally instead...${NC}"
+    echo -e "${YELLOW}   Tip: Push to GitHub to trigger GitHub Actions — future deploys will be instant.${NC}"
+    docker compose up -d --build
+fi
 
 # Wait for database readiness
 echo -e "${CYAN}⏳ Step 5: Initializing PostgreSQL Database & Seeding Superadmin...${NC}"

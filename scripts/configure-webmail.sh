@@ -4,7 +4,7 @@
 # Configures internal IMAP (Dovecot) & SMTP (Postfix) connections for all domains
 # Product: Azion Mail | Company: Azion Cloud
 # ==============================================================================
-set -e
+# Note: set -e intentionally omitted; docker exec calls here are best-effort
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'

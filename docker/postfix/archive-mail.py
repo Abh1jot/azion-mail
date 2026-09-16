@@ -7,6 +7,7 @@ and forwards them to the internal Azion Mail web API for delivery tracking.
 """
 
 import sys
+import os
 import json
 import urllib.request
 import urllib.error
@@ -122,13 +123,14 @@ def main():
         }
 
         # Send to internal web application
+        internal_secret = os.environ.get('INTERNAL_ARCHIVE_SECRET', 'azion-internal-archive-secret')
         req = urllib.request.Request(
             "http://web:3000/api/internal/archive-mail",
             data=json.dumps(payload).encode('utf-8'),
             headers={
                 "Content-Type": "application/json",
                 "User-Agent": "AzionMail-Postfix-Archiver/1.0",
-                "X-Internal-Secret": "azion-internal-archive-secret"
+                "X-Internal-Secret": internal_secret
             },
             method="POST"
         )

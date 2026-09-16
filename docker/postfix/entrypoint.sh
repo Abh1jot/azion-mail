@@ -98,6 +98,25 @@ SRSPID=$!
 sleep 0.5
 if ! kill -0 $SRSPID 2>/dev/null; then
     postsrsd -s /etc/postsrsd/postsrsd.secret -d "$MAIL_DOMAIN" -a 127.0.0.1 -p 10001 -P 10002 -u nobody >/dev/null 2>&1 &
+    SRSPID=$!
+fi
+
+# Wait up to 5 seconds for postsrsd to bind its TCP port (required since main.cf uses SRS maps)
+SRS_READY=false
+for i in $(seq 1 10); do
+    if nc -z 127.0.0.1 10001 2>/dev/null; then
+        SRS_READY=true
+        echo "✅ PostSRSd listening on port 10001 (SRS forwarding active)."
+        break
+    fi
+    sleep 0.5
+done
+if [ "$SRS_READY" = false ]; then
+    echo "⚠️ PostSRSd did not bind port 10001 in time. Disabling SRS maps to prevent Postfix startup failure."
+    sed -i 's/^recipient_canonical_maps/# recipient_canonical_maps/' /etc/postfix/main.cf
+    sed -i 's/^recipient_canonical_classes/# recipient_canonical_classes/' /etc/postfix/main.cf
+    sed -i 's/^sender_canonical_maps/# sender_canonical_maps/' /etc/postfix/main.cf
+    sed -i 's/^sender_canonical_classes/# sender_canonical_classes/' /etc/postfix/main.cf
 fi
 
 # Configure internal mail archiver transport (texthash: — no postmap compile needed on Alpine)

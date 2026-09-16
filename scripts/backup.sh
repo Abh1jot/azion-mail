@@ -13,7 +13,8 @@ echo "📦 Starting Azion Mail backup to $TARGET..."
 
 # 1. Dump PostgreSQL Database
 echo "💾 Exporting PostgreSQL database..."
-docker compose exec -T postgres pg_dump -U azion azionmail > "$TARGET/database.sql"
+. .env 2>/dev/null || true
+docker compose exec -T postgres pg_dump -U "${POSTGRES_USER:-azion}" "${POSTGRES_DB:-azionmail}" > "$TARGET/database.sql"
 
 # 2. Archive Virtual Mailboxes
 echo "📬 Archiving virtual mailboxes..."

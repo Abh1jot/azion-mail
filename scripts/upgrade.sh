@@ -4,6 +4,11 @@
 # ==============================================================================
 set -e
 
+if [ "$EUID" -ne 0 ]; then
+    echo "❌ Please run as root or with sudo."
+    exit 1
+fi
+
 echo "🔄 Checking for Azion Mail updates..."
 git pull origin main
 
@@ -17,6 +22,7 @@ else
 fi
 
 echo "🗄️ Running database migrations..."
-docker compose exec -T web npx prisma db push --accept-data-loss
+docker compose exec -T web npx prisma migrate deploy 2>/dev/null || docker compose exec -T web npx prisma db push --accept-data-loss
 
 echo "✅ Upgrade completed successfully!"
+

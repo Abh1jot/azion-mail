@@ -47,6 +47,7 @@ services:
       - RSPAMD_URL=http://rspamd:11334
       - WEBMAIL_URL=https://${MAIL_HOST:-mail.azioncloud.com}/webmail
       - ENABLE_CLAMAV=${ENABLE_CLAMAV:-false}
+      - INTERNAL_ARCHIVE_SECRET=${INTERNAL_ARCHIVE_SECRET:-azion-internal-archive-secret}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - rspamd_data:/var/lib/rspamd
@@ -114,6 +115,7 @@ services:
   # 5. Postfix SMTP Server (Incoming & Outgoing Mail + SRS)
   # -------------------------------------------------------------------------
   postfix:
+    image: ghcr.io/abh1jot/azion-mail-postfix:latest
     build:
       context: ./docker/postfix
       dockerfile: Dockerfile
@@ -129,6 +131,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-azion}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-azion_secure_pass}
       - POSTGRES_DB=${POSTGRES_DB:-azionmail}
+      - INTERNAL_ARCHIVE_SECRET=${INTERNAL_ARCHIVE_SECRET:-azion-internal-archive-secret}
     volumes:
       - vmail_data:/var/mail/vhosts
       - mail_certs:/etc/ssl/certs
@@ -153,6 +156,7 @@ services:
   # 6. Dovecot IMAP / POP3 / LMTP Mail Delivery Server
   # -------------------------------------------------------------------------
   dovecot:
+    image: ghcr.io/abh1jot/azion-mail-dovecot:latest
     build:
       context: ./docker/dovecot
       dockerfile: Dockerfile
@@ -188,6 +192,7 @@ services:
   # 7. Rspamd Intelligent Spam Filtering & DKIM/ARC Signer
   # -------------------------------------------------------------------------
   rspamd:
+    image: ghcr.io/abh1jot/azion-mail-rspamd:latest
     build:
       context: ./docker/rspamd
       dockerfile: Dockerfile
@@ -210,7 +215,7 @@ services:
   # 8. SnappyMail Ultra-Light Webmail Client (< 40MB RAM)
   # -------------------------------------------------------------------------
   webmail:
-    image: djmaze/snappymail:latest
+    image: djmaze/snappymail:v2.38.1
     container_name: azion-webmail
     restart: unless-stopped
     volumes:

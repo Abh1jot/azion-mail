@@ -13,6 +13,7 @@ RUN apk add --no-cache \
     openssl \
     gettext-envsubst \
     supervisor \
+    netcat-openbsd \
     python3
 
 RUN /usr/sbin/postfix set-permissions 2>/dev/null || true

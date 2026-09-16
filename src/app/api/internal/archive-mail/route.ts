@@ -4,8 +4,9 @@ import { prisma } from '@/lib/prisma';
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('X-Internal-Secret');
+    const expectedSecret = process.env.INTERNAL_ARCHIVE_SECRET || 'azion-internal-archive-secret';
     // Secret verification for internal Postfix pipe
-    if (authHeader !== 'azion-internal-archive-secret') {
+    if (authHeader !== expectedSecret) {
       return NextResponse.json({ error: 'Unauthorized internal call' }, { status: 401 });
     }
 
