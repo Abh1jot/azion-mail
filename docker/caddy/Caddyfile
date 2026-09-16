@@ -3,7 +3,9 @@
     admin off
 }
 
-{$CADDY_SITE_ADDR::80} {
+# Using MAIL_HOST (FQDN) triggers Caddy's automatic HTTPS / Let's Encrypt.
+# A bare ":80" would disable TLS — always use the domain name here.
+{$MAIL_HOST:mail.azioncloud.com} {
     # SnappyMail Webmail routing & assets
     redir /webmail /webmail/ 308
 
@@ -11,8 +13,6 @@
         reverse_proxy webmail:8888 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 
@@ -20,8 +20,6 @@
         reverse_proxy webmail:8888 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 
@@ -38,8 +36,6 @@
         reverse_proxy web:3000 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 
