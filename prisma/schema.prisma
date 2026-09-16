@@ -147,14 +147,22 @@ model Forwarder {
 }
 
 model CloudflareConfig {
-  id         String    @id @default(cuid())
-  userId     String    @unique
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiToken   String
-  autoSync   Boolean   @default(true)
-  lastSyncAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Legacy API key (kept for backwards compat)
+  apiToken       String?
+  // OAuth 2.0 fields
+  authType       String    @default("api_key")   // "api_key" | "oauth"
+  accessToken    String?   @db.Text
+  refreshToken   String?   @db.Text
+  tokenExpiresAt DateTime?
+  accountId      String?
+  accountEmail   String?
+  autoSync       Boolean   @default(true)
+  lastSyncAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model AuditLog {

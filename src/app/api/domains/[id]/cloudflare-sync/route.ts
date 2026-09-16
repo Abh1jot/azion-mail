@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { CloudflareClient } from '@/lib/cloudflare';
+import { CloudflareClient, getCloudflareToken } from '@/lib/cloudflare';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -12,34 +12,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const domain = await prisma.domain.findUnique({ where: { id } });
     if (!domain) return NextResponse.json({ error: 'Domain not found' }, { status: 404 });
 
+    // Resolve token: OAuth access_token (auto-refreshed) or legacy API key
+    // Also accept a one-time apiToken in body for backwards compat
     const body = await req.json().catch(() => ({}));
-    let apiToken = body.apiToken;
+    let token: string;
 
-    // If no token provided in request, check saved Cloudflare config for user
-    if (!apiToken) {
-      const savedConfig = await prisma.cloudflareConfig.findUnique({
+    if (body.apiToken) {
+      // One-time token passed directly (legacy flow)
+      token = body.apiToken;
+      // Save as legacy api_key for future use
+      await prisma.cloudflareConfig.upsert({
         where: { userId: user.id },
+        update: { apiToken: body.apiToken, authType: 'api_key', lastSyncAt: new Date() },
+        create: { userId: user.id, apiToken: body.apiToken, authType: 'api_key' },
       });
-      if (savedConfig) {
-        apiToken = savedConfig.apiToken;
+    } else {
+      // OAuth path: resolve from stored config (auto-refreshes if needed)
+      try {
+        token = await getCloudflareToken(user.id);
+      } catch {
+        return NextResponse.json({
+          error: 'Cloudflare not connected. Please click "Connect Cloudflare" to authorize.',
+          requiresOAuth: true,
+          oauthUrl: '/api/auth/cloudflare/authorize',
+        }, { status: 401 });
       }
     }
 
-    if (!apiToken) {
-      return NextResponse.json({
-        error: 'Cloudflare API Token is required. Please provide your Cloudflare API token.',
-      }, { status: 400 });
-    }
+    const cf = new CloudflareClient(token);
 
-    const cf = new CloudflareClient(apiToken);
-
-    // 1. Locate zone
+    // Find the correct zone
     let zoneId = body.zoneId || domain.cloudflareZoneId;
     if (!zoneId) {
       const zone = await cf.getZoneByName(domain.domain);
       if (!zone) {
         return NextResponse.json({
-          error: `Zone '${domain.domain}' was not found in your Cloudflare account. Please make sure the domain is added to Cloudflare and the API token has Zone.DNS permissions.`,
+          error: `Zone '${domain.domain}' not found in your Cloudflare account. Make sure the domain is added to Cloudflare and the OAuth app has Zone.DNS permissions.`,
         }, { status: 404 });
       }
       zoneId = zone.id;
@@ -47,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const mailHost = process.env.MAIL_HOST || 'mail.azioncloud.com';
 
-    // 2. Sync / repair all records
+    // Sync / repair all required DNS records
     const syncResult = await cf.syncMailDns(
       zoneId,
       domain.domain,
@@ -56,29 +64,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       domain.dkimSelector
     );
 
-    // 3. Update domain record with zoneId and save user Cloudflare config if requested
+    // Persist zone ID and mark domain verified
     await prisma.domain.update({
       where: { id: domain.id },
-      data: {
-        cloudflareZoneId: zoneId,
-        isVerified: true,
-      },
+      data: { cloudflareZoneId: zoneId, isVerified: true },
     });
 
-    if (body.saveToken !== false) {
-      await prisma.cloudflareConfig.upsert({
-        where: { userId: user.id },
-        update: {
-          apiToken,
-          lastSyncAt: new Date(),
-        },
-        create: {
-          userId: user.id,
-          apiToken,
-          lastSyncAt: new Date(),
-        },
-      });
-    }
+    // Update last sync timestamp
+    await prisma.cloudflareConfig.updateMany({
+      where: { userId: user.id },
+      data: { lastSyncAt: new Date() },
+    });
 
     await prisma.auditLog.create({
       data: {
@@ -90,11 +86,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     }).catch(() => {});
 
-    return NextResponse.json({
-      success: true,
-      zoneId,
-      syncResult,
-    });
+    return NextResponse.json({ success: true, zoneId, syncResult });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to sync with Cloudflare' }, { status: 500 });
   }

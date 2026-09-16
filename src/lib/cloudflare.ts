@@ -1,6 +1,67 @@
 import { getDomainRecommendedDns } from './dkim';
+import { prisma } from './prisma';
 
 const CF_API_BASE = 'https://api.cloudflare.com/client/v4';
+const CF_TOKEN_URL = 'https://dash.cloudflare.com/oauth2/token';
+
+/**
+ * Resolves a working Cloudflare Bearer token for a user.
+ * - OAuth mode: returns access_token, refreshing it if expired.
+ * - API key mode: returns the stored api_key directly.
+ * Throws if no Cloudflare connection found for the user.
+ */
+export async function getCloudflareToken(userId: string): Promise<string> {
+  const config = await prisma.cloudflareConfig.findUnique({ where: { userId } });
+  if (!config) throw new Error('No Cloudflare connection found. Please connect via OAuth first.');
+
+  if (config.authType === 'oauth') {
+    if (!config.accessToken) throw new Error('OAuth token missing. Please reconnect Cloudflare.');
+
+    // Refresh if expired (or expires within 5 minutes)
+    const needsRefresh = config.tokenExpiresAt
+      ? config.tokenExpiresAt.getTime() - Date.now() < 5 * 60 * 1000
+      : false;
+
+    if (needsRefresh && config.refreshToken) {
+      const clientId = process.env.CLOUDFLARE_CLIENT_ID!;
+      const clientSecret = process.env.CLOUDFLARE_CLIENT_SECRET!;
+
+      const res = await fetch(CF_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: config.refreshToken,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const newToken: string = data.access_token;
+        const newExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000);
+        await prisma.cloudflareConfig.update({
+          where: { userId },
+          data: {
+            accessToken: newToken,
+            refreshToken: data.refresh_token || config.refreshToken,
+            tokenExpiresAt: newExpiry,
+          },
+        });
+        return newToken;
+      }
+      // Refresh failed — fall through with existing token and let the API call fail naturally
+    }
+
+    return config.accessToken;
+  }
+
+  // Legacy API key mode
+  if (!config.apiToken) throw new Error('No API token configured. Please reconnect Cloudflare.');
+  return config.apiToken;
+}
+
 
 interface CloudflareApiResponse<T> {
   success: boolean;
